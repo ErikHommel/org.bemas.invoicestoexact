@@ -42,3 +42,6 @@ cv en invoicestoexact
 ## Known Issues
 
 (* FIXME *)
+=======
+CiviCRM extension specific for BEMAS sending invoices to Exact
+>>>>>>> bf0a1a7cadca77f874853ef13147aac9536e12c4
