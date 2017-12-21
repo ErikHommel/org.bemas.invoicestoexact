@@ -166,7 +166,7 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         'line_notes' => $this->_data[$contributionId]['line_notes'],
         'unit_price' => $this->_data[$contributionId]['unit_price'],
       );
-      CRM_Invoicetoexact_ExactHelper::sendInvoice($data);
+      CRM_Invoicestoexact_ExactHelper::sendInvoice($data);
     }
     parent::postProcess();
   }

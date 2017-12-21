@@ -3,7 +3,7 @@
 require_once __DIR__ . '/../../exactonline-api-php-client/vendor/autoload.php';
 
 
-class CRM_Invoicestoexact_Exacthelper {
+class CRM_Invoicestoexact_ExactHelper {
   static function redirectUrl() {
     try {
       // If authorization code is returned from Exact, save this to use for token request
