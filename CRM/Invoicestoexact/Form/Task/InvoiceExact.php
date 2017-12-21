@@ -151,6 +151,7 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
           'contact_code' => $dao->$contactCodeColumn,
           'exact_invoice_id' => $dao->$invoiceIdColumn,
           'item_code' => $dao->item_code,
+          'line_notes' => 'Test Notitie',
         );
       }
     }
