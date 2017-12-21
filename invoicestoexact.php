@@ -124,6 +124,15 @@ function invoicestoexact_civicrm_alterSettingsFolders(&$metaDataFolders = NULL) 
 }
 
 // --- Functions below this ship commented out. Uncomment as required. ---
+/**
+ * Implements hook_civicrm_searchTasks().
+ */
+function invoicestoexact_civicrm_searchTasks($objectType, &$tasks) {
+  $tasks[] = array(
+    'title' => 'Send Invoice(s) to Exact',
+    'class' => 'CRM_Invoicestoexact_Form_Task_InvoiceExact',
+  );
+}
 
 /**
  * Implements hook_civicrm_preProcess().
