@@ -1,6 +1,11 @@
 <?php
 /**
  * Class voor BEMAS configuratie invoices to exact
+ *
+ * @author Erik Hommel <hommel@ee-atwork>
+ * @author Alain Benbassat <alain@businessandcode.eu>
+ * @date 21 Dec 2017
+ * @license AGPL-3.0
  */
 
 class CRM_Invoicestoexact_Config {
@@ -12,6 +17,8 @@ class CRM_Invoicestoexact_Config {
   private $_itemsExactOptionGroup = array();
   private $_contributionDataCustomGroup = array();
   private $_exactInvoiceIdCustomField = array();
+  private $_popsyIdCustomField = array();
+  private $_organizationDetailsCustomGroup = NULL;
 
   /**
    * CRM_Invoicestoexact_Config constructor.
@@ -22,6 +29,35 @@ class CRM_Invoicestoexact_Config {
     if (!empty($this->_itemsExactOptionGroup['id'])) {
       // add exact items based on membership types
       $this->updateMembershipTypeExactItems();
+    }
+    $this->setOrganizationDetailsCustomGroup();
+    $this->setPopsyIdCustomField();
+  }
+
+  /**
+   * Method to find and set the organization details custom group
+   */
+  private function setOrganizationDetailsCustomGroup() {
+    try {
+      $this->_organizationDetailsCustomGroup = civicrm_api3('CustomGroup', 'getsingle', array(
+        'name' => 'Organization_details',
+      ));
+    }
+    catch (CiviCRM_API3_Exception $ex) {
+    }
+  }
+
+  /**
+   * Method to find and set the custom field popsy_id_25
+   */
+  private function setPopsyIdCustomField() {
+    try {
+      $this->_popsyIdCustomField = civicrm_api3('CustomField', 'getsingle', array(
+        'name' => 'popsy_id_25',
+        'custom_group_id' => $this->_organizationDetailsCustomGroup['id'],
+      ));
+    }
+    catch (CiviCRM_API3_Exception $ex) {
     }
   }
 
@@ -186,6 +222,20 @@ class CRM_Invoicestoexact_Config {
   }
 
   /**
+   * Getter for popsy id custom field
+   *
+   * @param string $key
+   * @return array|string
+   */
+  public function getPopsyIdCustomField($key='id') {
+    if (!empty($key) && isset($this->_popsyIdCustomField[$key])) {
+      return $this->_popsyIdCustomField[$key];
+    } else {
+      return $this->_popsyIdCustomField;
+    }
+  }
+
+  /**
    * Getter for exact invoice id custom field
    *
    * @param string $key
@@ -198,6 +248,21 @@ class CRM_Invoicestoexact_Config {
       return $this->_exactInvoiceIdCustomField;
     }
   }
+
+  /**
+   * Getter for organization details custom group
+   *
+   * @param string $key
+   * @return array|mixed
+   */
+  public function getOrganizationDetailsCustomGroup($key='id') {
+    if (!empty($key) && isset($this->_organizationDetailsCustomGroup[$key])) {
+      return $this->_organizationDetailsCustomGroup[$key];
+    } else {
+      return $this->_organizationDetailsCustomGroup;
+    }
+  }
+
   /**
    * Getter for contribution data custom group
    *
