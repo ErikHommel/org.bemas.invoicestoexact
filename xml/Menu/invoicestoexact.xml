@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<menu>
+    <item>
+        <path>civicrm/invoicestoexact-webhook</path>
+        <page_callback>CRM_Invoicestoexact_ExactHelper::redirectUrl</page_callback>
+        <title>Exact Webhook</title>
+        <access_arguments>*always allow*</access_arguments>
+    </item>
+</menu>
