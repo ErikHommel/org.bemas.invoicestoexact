@@ -31,7 +31,6 @@ class MyCRM_Core_Session {
   }
 }
 
-
 class CRM_Invoicestoexact_ExactHelper {
   static function redirectUrl() {
     try {
@@ -44,11 +43,26 @@ class CRM_Invoicestoexact_ExactHelper {
       if (MyCRM_Core_Session::singleton()->get('authorizationcode', 'ExactSession') === null) {
         self::authorize();
       }
+
+    } catch (\Exception $e) {
+      echo 'FOUT: ' . $e->getMessage();
+    }
+  }
+
+  /*
+   * contact_code
+   * item_code
+   * unit_price
+   * invoice_description
+   * line_notes
+   */
+  static function sendInvoice($params) {
+    watchdog('alain', print_r($params, TRUE));
       $connection = self::connect();
 
       // find the customer
       $customerFinder = new \Picqer\Financials\Exact\Account($connection);
-      $c = $customerFinder->filter("Code eq '                28'");
+      $c = $customerFinder->filter("trim(Code) eq '" . $params['contact_code'] . "'");
       if (count($c) !== 1) {
         throw new Exception("klant niet gevonden");
       }
@@ -66,16 +80,16 @@ class CRM_Invoicestoexact_ExactHelper {
       $salesInvoice = new \Picqer\Financials\Exact\SalesInvoice($connection);
       $salesInvoice->InvoiceTo = $customer->ID;
       $salesInvoice->OrderedBy = $customer->ID;
-      $salesInvoice->Description = 'Lidmaatschap testfactuur';
+      $salesInvoice->Description = $params['invoice_description'];
 
       // add an invoice line
       $salesInvoiceLine = new \Picqer\Financials\Exact\SalesInvoiceLine($connection);
 
       //$salesInvoiceLine->UnitCode = 'IND300661';
       $salesInvoiceLine->Item = $item->ID;
-      $salesInvoiceLine->Quantity = 17;
-      $salesInvoiceLine->UnitPrice = 99;
-      $salesInvoiceLine->Notes = "bla bla bla\nen nog eens bla bla bla";
+      $salesInvoiceLine->Quantity = 1;
+      $salesInvoiceLine->UnitPrice = $params['unit_price'];
+      $salesInvoiceLine->Notes = $params['line_notes'];
 
       // add line to invoice
       $salesInvoice->SalesInvoiceLines = array($salesInvoiceLine);
@@ -86,19 +100,6 @@ class CRM_Invoicestoexact_ExactHelper {
       echo "InvoiceID: " . $s['InvoiceID'] . '<br>';
 
       echo "Invoice created: " . $salesInvoice->InvoiceNumber;
-    } catch (\Exception $e) {
-      echo 'FOUT: ' . $e->getMessage();
-    }
-  }
-
-  /*
-   * contact_code
-   * item_code
-   * unit_price
-   * invoice_description
-   * line_notes
-   */
-  static function sendInvoice($params) {
   }
 
   /***********************************************************
