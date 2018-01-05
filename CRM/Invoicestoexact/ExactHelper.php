@@ -59,9 +59,10 @@ class CRM_Invoicestoexact_ExactHelper {
       echo "Ordernummer: " . $s['OrderNumber'] . '<br>';
       echo "InvoiceID: " . $s['InvoiceID'] . '<br>';
       echo "Invoice created: " . $salesInvoice->InvoiceNumber;
+      CRM_Core_Session::setStatus('Created invoice: ' . $salesInvoice->InvoiceNumber);
     }
     catch (Exception $e) {
-      echo $e->getMessage();
+      CRM_Core_Session::setStatus($e->getMessage());
     }
   }
 
