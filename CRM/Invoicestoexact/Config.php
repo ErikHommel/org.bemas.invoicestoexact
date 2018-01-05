@@ -29,6 +29,9 @@ class CRM_Invoicestoexact_Config {
     if (!empty($this->_itemsExactOptionGroup['id'])) {
       // add exact items based on membership types
       $this->updateMembershipTypeExactItems();
+
+      // add client id/client secret option value
+      $this->addClientIDandSecretItem();
     }
     $this->setOrganizationDetailsCustomGroup();
     $this->setPopsyIdCustomField();
@@ -156,6 +159,7 @@ class CRM_Invoicestoexact_Config {
           'is_active' => 1,
           'is_reserved' => 1
         ));
+
         return $optionGroup['values'][$optionGroup['id']];
       }
       catch (CiviCRM_API3_Exception $ex) {
@@ -182,9 +186,23 @@ class CRM_Invoicestoexact_Config {
           'value' => $membershipType['name'],
           'is_active' => 1,
           'is_reserved' => 1,
-          'label' => ts('Exact Item voor Lidmaatschapstype ').$membershipType['name'].':',
+          'label' => ts('Exact Artikel code voor Lidmaatschapstype ').$membershipType['name'].':',
         ));
       }
+    }
+    catch (CiviCRM_API3_Exception $ex) {
+    }
+  }
+
+  public function addClientIDandSecretItem() {
+    try {
+      $params = array(
+        'option_group_id' => $this->_itemsExactOptionGroup['id'],
+        'is_active' => 1,
+        'is_reserved' => 1,
+        'label' => 'Client ID/Client Secret',
+      );
+      $this->createOptionValueIfNotExists($params);
     }
     catch (CiviCRM_API3_Exception $ex) {
     }
@@ -202,7 +220,8 @@ class CRM_Invoicestoexact_Config {
         if ($count == 0) {
           civicrm_api3('OptionValue', 'create', $data);
         }
-      } catch (CiviCRM_API3_Exception $ex) {
+      }
+      catch (CiviCRM_API3_Exception $ex) {
       }
     }
   }
