@@ -30,47 +30,39 @@ class CRM_Invoicestoexact_ExactHelper {
    * line_notes
    */
   static function sendInvoice($params) {
-    $connection = self::connect();
 
-    // find the customer
-    $customerFinder = new \Picqer\Financials\Exact\Account($connection);
-    $c = $customerFinder->filter("trim(Code) eq '" . $params['contact_code'] . "'");
-    if (count($c) !== 1) {
-      throw new Exception("klant niet gevonden");
+    try {
+      $connection = self::connect();// find the customer
+      $customerFinder = new \Picqer\Financials\Exact\Account($connection);
+      $c = $customerFinder->filter("trim(Code) eq '" . $params['contact_code'] . "'");
+      if (count($c) !== 1) {
+        throw new Exception("klant niet gevonden");
+      }
+      $customer = $c[0];// find the product
+      $itemFinder = new Picqer\Financials\Exact\Item($connection);
+      $i = $itemFinder->filter("Code eq '" . $params['item_code'] . "'");
+      if (count($i) !== 1) {
+        throw new Exception("artikel niet gevonden");
+      }
+      $item = $i[0];// create the invoice
+      $salesInvoice = new \Picqer\Financials\Exact\SalesInvoice($connection);
+      $salesInvoice->InvoiceTo = $customer->ID;
+      $salesInvoice->OrderedBy = $customer->ID;
+      $salesInvoice->Description = $params['invoice_description'];// add an invoice line
+      $salesInvoiceLine = new \Picqer\Financials\Exact\SalesInvoiceLine($connection);
+      $salesInvoiceLine->Item = $item->ID;
+      $salesInvoiceLine->Quantity = 1;
+      $salesInvoiceLine->UnitPrice = $params['unit_price'];
+      $salesInvoiceLine->Notes = $params['line_notes'];// add line to invoice
+      $salesInvoice->SalesInvoiceLines = [$salesInvoiceLine];// insert invoice in Exact
+      $s = $salesInvoice->insert();
+      echo "Ordernummer: " . $s['OrderNumber'] . '<br>';
+      echo "InvoiceID: " . $s['InvoiceID'] . '<br>';
+      echo "Invoice created: " . $salesInvoice->InvoiceNumber;
     }
-    $customer = $c[0];
-
-    // find the product
-    $itemFinder = new Picqer\Financials\Exact\Item($connection);
-    $i = $itemFinder->filter("Code eq '" . $params['item_code'] . "'");
-    if (count($i) !== 1) {
-      throw new Exception("artikel niet gevonden");
+    catch (Exception $e) {
+      echo $e->getMessage();
     }
-    $item = $i[0];
-
-    // create the invoice
-    $salesInvoice = new \Picqer\Financials\Exact\SalesInvoice($connection);
-    $salesInvoice->InvoiceTo = $customer->ID;
-    $salesInvoice->OrderedBy = $customer->ID;
-    $salesInvoice->Description = $params['invoice_description'];
-
-    // add an invoice line
-    $salesInvoiceLine = new \Picqer\Financials\Exact\SalesInvoiceLine($connection);
-
-    $salesInvoiceLine->Item = $item->ID;
-    $salesInvoiceLine->Quantity = 1;
-    $salesInvoiceLine->UnitPrice = $params['unit_price'];
-    $salesInvoiceLine->Notes = $params['line_notes'];
-
-    // add line to invoice
-    $salesInvoice->SalesInvoiceLines = array($salesInvoiceLine);
-
-    // insert invoice in Exact
-    $s = $salesInvoice->insert();
-    echo "Ordernummer: " . $s['OrderNumber'] . '<br>';
-    echo "InvoiceID: " . $s['InvoiceID'] . '<br>';
-
-    echo "Invoice created: " . $salesInvoice->InvoiceNumber;
   }
 
   /***********************************************************

@@ -19,7 +19,7 @@ class Connection
     /**
      * @var string
      */
-    private $baseUrl = 'https://start.exactonline.nl';
+    private $baseUrl = 'https://start.exactonline.be';
 
     /**
      * @var string
