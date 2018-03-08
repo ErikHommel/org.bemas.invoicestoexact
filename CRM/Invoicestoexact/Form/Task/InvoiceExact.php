@@ -16,6 +16,7 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
    * Method to build the form
    */
   public function buildQuickForm() {
+    CRM_Invoicestoexact_Config::singleton();
     $this->buildData();
     foreach ($this->_contributionIds as $contributionId) {
       if ($this->canInvoiceBeSent($contributionId)) {
@@ -132,7 +133,7 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
       $contDataTableName = CRM_Invoicestoexact_Config::singleton()->getContributionDataCustomGroup('table_name');
       $invoiceOptionGroupId = CRM_Invoicestoexact_Config::singleton()->getItemsExactOptionGroup('id');
       $query = 'SELECT a.id AS contribution_id, a.contact_id, b.display_name, c.entity_table, c.label AS invoice_description, 
-      c.unit_price, d.'.$contactCodeColumn.', e.'.$invoiceIdColumn.', f.label AS item_code 
+      c.unit_price, d.' . $contactCodeColumn . ', e.' . $invoiceIdColumn . ', f.label AS item_code 
       FROM civicrm_contribution a JOIN civicrm_contact b ON a.contact_id = b.id
       LEFT JOIN civicrm_line_item c ON a.id = c.contribution_id
       LEFT JOIN '.$orgDetTableName.' d ON a.contact_id = d.entity_id
@@ -157,6 +158,9 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
     }
   }
 
+  /**
+   * Overridden method to process form submission
+   */
   public function postProcess() {
     foreach ($this->_contributionIds as $contributionId) {
       $data = array(
@@ -166,9 +170,63 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         'line_notes' => $this->_data[$contributionId]['line_notes'],
         'unit_price' => $this->_data[$contributionId]['unit_price'],
       );
-      CRM_Invoicestoexact_ExactHelper::sendInvoice($data);
+      $result = CRM_Invoicestoexact_ExactHelper::sendInvoice($data);
+      if (!isset($result['is_error']) || !isset($result['invoice_id']) || !isset($result['error_message'])) {
+        CRM_Core_Error::debug_log_message(ts('Badly formed result array received from Exact in ') . __METHOD__
+          . ' (extension org.bemas.invoicestoexact)');
+      }
+      else {
+        $this->processResultFromExact($result, $contributionId);
+      }
     }
     parent::postProcess();
+  }
+
+  /**
+   * Method to process result from Exact
+   * - if is_error = 1 -> set error flag and save error message in custom fields for contribution
+   * - if is_error = 0 -> unset error flag, clear error message and save exact invoice_id for contribution
+   *
+   * @param array $result
+   * @param int $contributionId
+   */
+  private function processResultFromExact($result, $contributionId) {
+    $sentErrorCustomFieldId = CRM_Invoicestoexact_Config::singleton()->getExactSentErrorCustomField('id');
+    $errorMessageCustomFieldId = CRM_Invoicestoexact_Config::singleton()->getExactErrorMessageCustomField('id');
+    $invoiceIdCustomFieldId = CRM_Invoicestoexact_Config::singleton()->getExactInvoiceIdCustomField('id');
+    $this->saveContributionCustomData($sentErrorCustomFieldId, $result['is_error'], $contributionId);
+    switch ($result['is_error']) {
+      case 0:
+        $this->saveContributionCustomData($errorMessageCustomFieldId, "", $contributionId);
+        $this->saveContributionCustomData($invoiceIdCustomFieldId, $result['invoice_id'], $contributionId);
+        break;
+
+      case 1:
+        $this->saveContributionCustomData($errorMessageCustomFieldId, $result['error_message'], $contributionId);
+        $this->saveContributionCustomData($invoiceIdCustomFieldId, "", $contributionId);
+        break;
+    }
+  }
+
+  /**
+   * Method to save contribution custom data values
+   *
+   * @param $customFieldId
+   * @param $value
+   * @param $contributionId
+   */
+  private function saveContributionCustomData($customFieldId, $value, $contributionId) {
+    try {
+      civicrm_api3('CustomValue', 'create', [
+        'entity_id' => $contributionId,
+        'entity_table' => 'civicrm_contribution',
+        'custom_'.$customFieldId => $value,
+      ]);
+    }
+    catch (CiviCRM_API3_Exception $ex) {
+      CRM_Core_Error::debug_log_message('Could not set contribution custom value for custom field id '
+        . $customFieldId . ' and contribution ' . $contributionId . ' in ' . __METHOD__ . '(extension org.bemas.invoicestoexact');
+    }
   }
 
 }
