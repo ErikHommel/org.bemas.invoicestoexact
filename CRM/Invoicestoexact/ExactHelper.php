@@ -4,6 +4,10 @@ require_once __DIR__ . '/../../exactonline-api-php-client/vendor/autoload.php';
 
 define('CLIENT_REDIRECT_URL', 'civicrm/invoicestoexact-webhook');
 
+// when this page is called directly (i.e. when exact calls the webhook
+// try to store authorization code
+CRM_Invoicestoexact_ExactHelper::redirectUrl();
+
 class CRM_Invoicestoexact_ExactHelper {
   static function redirectUrl() {
     try {
@@ -16,8 +20,8 @@ class CRM_Invoicestoexact_ExactHelper {
       if (self::get('authorizationcode') === null) {
         self::authorize();
       }
-
-    } catch (\Exception $e) {
+    }
+    catch (\Exception $e) {
       echo 'FOUT: ' . $e->getMessage();
     }
   }
