@@ -162,6 +162,8 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
    * Overridden method to process form submission
    */
   public function postProcess() {
+    CRM_Invoicestoexact_ExactHelper::forcedLogin();
+
     foreach ($this->_contributionIds as $contributionId) {
       $data = array(
         'contact_code' => $this->_data[$contributionId]['contact_code'],
