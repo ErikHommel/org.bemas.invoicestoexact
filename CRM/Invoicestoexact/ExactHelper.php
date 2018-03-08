@@ -6,7 +6,9 @@ define('CLIENT_REDIRECT_URL', 'civicrm/invoicestoexact-webhook');
 
 // when this page is called directly (i.e. when exact calls the webhook)
 // try to store connect again
-CRM_Invoicestoexact_ExactHelper::forcedLogin();
+CRM_Invoicestoexact_ExactHelper::redirectUrl();
+CRM_Invoicestoexact_ExactHelper::connect();
+echo "Probeer opnieuw";
 
 class CRM_Invoicestoexact_ExactHelper {
   static function redirectUrl() {
