@@ -15,6 +15,7 @@ class CRM_Invoicestoexact_Config {
 
   // property for items to exact option group
   private $_itemsExactOptionGroup = [];
+  private $_exactCredentialsOptionGroup = [];
   private $_contributionDataCustomGroup = [];
   private $_exactInvoiceIdCustomField = [];
   private $_exactSentErrorCustomField = [];
@@ -27,6 +28,7 @@ class CRM_Invoicestoexact_Config {
    */
   public function __construct() {
     $this->_itemsExactOptionGroup = $this->createOptionGroupIfNotExists('bemas_items_to_exact', 'BEMAS Exact Lidmaatschap Items');
+    $this->_exactCredentialsOptionGroup = $this->createOptionGroupIfNotExists('bemas_exact_credentials', 'BEMAS Exact Credentials');
     $this->createContributionDataCustomGroup();
     if (!empty($this->_itemsExactOptionGroup['id'])) {
       // add exact items based on membership types
@@ -37,6 +39,40 @@ class CRM_Invoicestoexact_Config {
     }
     $this->setOrganizationDetailsCustomGroup();
     $this->setPopsyIdCustomField();
+  }
+
+  /**
+   * Getter for exact client ID
+   *
+   * @return array
+   */
+  public function getExactClientId() {
+    try {
+      return civicrm_api3('OptionValue', 'getvalue', [
+        'option_group_id' => $this->_exactCredentialsOptionGroup['id'],
+        'name' => 'bemas_exact_client_id',
+        'return' => 'value',
+      ]);
+    } catch (CiviCRM_API3_Exception $ex) {
+      CRM_Core_Error::createError(ts('Could not find Exact Client ID, not possible to connect to Exact. Contact your system administrator'));
+    }
+  }
+
+  /**
+   * Getter for exact client secret
+   *
+   * @return array
+   */
+  public function getExactClientSecret() {
+    try {
+      return civicrm_api3('OptionValue', 'getvalue', [
+        'option_group_id' => $this->_exactCredentialsOptionGroup['id'],
+        'name' => 'bemas_exact_client_secret',
+        'return' => 'value',
+      ]);
+    } catch (CiviCRM_API3_Exception $ex) {
+      CRM_Core_Error::createError(ts('Could not find Exact Client Secret, not possible to connect to Exact. Contact your system administrator'));
+    }
   }
 
   /**
@@ -249,12 +285,12 @@ class CRM_Invoicestoexact_Config {
       ));
       foreach ($membershipTypes['values'] as $membershipType) {
         // create an option value for each membership type if not exists
-        $this->createOptionValueIfNotExists(array(
+        $this->createOptionValueIfLabelNotExists(array(
           'option_group_id' => $this->_itemsExactOptionGroup['id'],
-          'value' => $membershipType['name'],
+          'label' => $membershipType['name'],
           'is_active' => 1,
           'is_reserved' => 1,
-          'label' => ts('Exact Artikel code voor Lidmaatschapstype ').$membershipType['name'].':',
+          'value' => ts('Dummy Exact Artikel code voor Lidmaatschapstype ').$membershipType['name'].':',
         ));
       }
     }
@@ -262,17 +298,27 @@ class CRM_Invoicestoexact_Config {
     }
   }
 
+  /**
+   * Method to save exact integration credentials in option group
+   */
   public function addClientIDandSecretItem() {
-    try {
-      $params = array(
-        'option_group_id' => $this->_itemsExactOptionGroup['id'],
-        'is_active' => 1,
-        'is_reserved' => 1,
-        'label' => 'Client ID/Client Secret',
-      );
-      $this->createOptionValueIfNotExists($params);
-    }
-    catch (CiviCRM_API3_Exception $ex) {
+    $optionValues = [
+      'bemas_exact_client_id' => 'Exact Client ID',
+      'bemas_exact_client_secret' => 'Exact Client Secret',
+      ];
+    foreach ($optionValues as $name => $label) {
+      try {
+        $params = array(
+          'option_group_id' => $this->_exactCredentialsOptionGroup['id'],
+          'is_active' => 1,
+          'is_reserved' => 1,
+          'label' => $label,
+          'name' => $name,
+        );
+        $this->createOptionValueIfLabelNotExists($params);
+      }
+      catch (CiviCRM_API3_Exception $ex) {
+      }
     }
   }
 
@@ -281,10 +327,13 @@ class CRM_Invoicestoexact_Config {
    *
    * @param $data
    */
-  private function createOptionValueIfNotExists($data) {
+  private function createOptionValueIfLabelNotExists($data) {
     if (!empty($data)) {
       try {
-        $count = civicrm_api3('OptionValue', 'getcount', $data);
+        $count = civicrm_api3('OptionValue', 'getcount', [
+          'option_group_id' => $data['option_group_id'],
+          'label' => $data['label'],
+        ]);
         if ($count == 0) {
           civicrm_api3('OptionValue', 'create', $data);
         }

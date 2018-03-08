@@ -16,7 +16,6 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
    * Method to build the form
    */
   public function buildQuickForm() {
-    CRM_Invoicestoexact_Config::singleton();
     $this->buildData();
     foreach ($this->_contributionIds as $contributionId) {
       if ($this->canInvoiceBeSent($contributionId)) {
@@ -133,12 +132,12 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
       $contDataTableName = CRM_Invoicestoexact_Config::singleton()->getContributionDataCustomGroup('table_name');
       $invoiceOptionGroupId = CRM_Invoicestoexact_Config::singleton()->getItemsExactOptionGroup('id');
       $query = 'SELECT a.id AS contribution_id, a.contact_id, b.display_name, c.entity_table, c.label AS invoice_description, 
-      c.unit_price, d.' . $contactCodeColumn . ', e.' . $invoiceIdColumn . ', f.label AS item_code 
+      c.unit_price, d.' . $contactCodeColumn . ', e.' . $invoiceIdColumn . ', f.value AS item_code 
       FROM civicrm_contribution a JOIN civicrm_contact b ON a.contact_id = b.id
       LEFT JOIN civicrm_line_item c ON a.id = c.contribution_id
       LEFT JOIN '.$orgDetTableName.' d ON a.contact_id = d.entity_id
       LEFT JOIN '.$contDataTableName.' e ON a.id = e.entity_id
-      LEFT JOIN civicrm_option_value f ON c.label = f.value AND f.option_group_id = '.$invoiceOptionGroupId.
+      LEFT JOIN civicrm_option_value f ON c.label = f.label AND f.option_group_id = '.$invoiceOptionGroupId.
       ' WHERE a.id IN('.implode(', ', $queryIndexes).')';
 
       $dao = CRM_Core_DAO::executeQuery($query, $queryParams);
