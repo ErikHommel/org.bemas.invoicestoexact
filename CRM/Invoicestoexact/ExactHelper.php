@@ -96,14 +96,8 @@ class CRM_Invoicestoexact_ExactHelper {
 
   static function authorize() {
     // get client id / secret option value
-    $params = array(
-      'option_group_id' => 'bemas_items_to_exact',
-      'label' => 'Client ID/Client Secret',
-    );
-    $v = civicrm_api3('OptionValue', 'getsingle', $params);
-    $vArr = explode('/', $v['value']);
-    $clientID = $vArr[0];
-    $clientSecret = $vArr[1];
+    $clientID = CRM_Invoicestoexact_Config::singleton()->getExactClientId();
+    $clientSecret = CRM_Invoicestoexact_Config::singleton()->getExactClientSecret();
 
     $url = CRM_Utils_System::url(CLIENT_REDIRECT_URL, 'reset=1', TRUE);
     $connection = new \Picqer\Financials\Exact\Connection();
@@ -115,14 +109,8 @@ class CRM_Invoicestoexact_ExactHelper {
 
   static function connect() {
     // get client id / secret option value
-    $params = array(
-      'option_group_id' => 'bemas_items_to_exact',
-      'label' => 'Client ID/Client Secret',
-    );
-    $v = civicrm_api3('OptionValue', 'getsingle', $params);
-    $vArr = explode('/', $v['value']);
-    $clientID = $vArr[0];
-    $clientSecret = $vArr[1];
+    $clientID = CRM_Invoicestoexact_Config::singleton()->getExactClientId();
+    $clientSecret = CRM_Invoicestoexact_Config::singleton()->getExactClientSecret();
 
     $url = CRM_Utils_System::url(CLIENT_REDIRECT_URL, 'reset=1', TRUE);
     $connection = new \Picqer\Financials\Exact\Connection();
