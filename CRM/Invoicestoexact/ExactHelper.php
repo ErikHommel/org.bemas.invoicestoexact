@@ -6,6 +6,7 @@ define('CLIENT_REDIRECT_URL', 'civicrm/invoicestoexact-webhook');
 
 // when this page is called directly (i.e. when exact calls the webhook
 // try to store authorization code
+CRM_Invoicestoexact_ExactHelper::clearStorage();
 CRM_Invoicestoexact_ExactHelper::redirectUrl();
 
 class CRM_Invoicestoexact_ExactHelper {
@@ -35,7 +36,7 @@ class CRM_Invoicestoexact_ExactHelper {
     }
     catch (Exception $e) {
       // clear json file
-      file_put_contents(__DIR__ . '/storage.json', '[]');
+      self::clearStorage();
 
       // try forced login
       self::connect();
@@ -184,5 +185,9 @@ class CRM_Invoicestoexact_ExactHelper {
     $storage = json_decode(file_get_contents(__DIR__ . '/storage.json'), true);
     $storage[$key] = $value;
     file_put_contents(__DIR__ . '/storage.json', json_encode($storage));
+  }
+
+  static function clearStorage() {
+    file_put_contents(__DIR__ . '/storage.json', '[]');
   }
 }
