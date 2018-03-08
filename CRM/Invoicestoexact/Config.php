@@ -17,7 +17,7 @@ class CRM_Invoicestoexact_Config {
   private $_itemsExactOptionGroup = [];
   private $_exactCredentialsOptionGroup = [];
   private $_contributionDataCustomGroup = [];
-  private $_exactInvoiceIdCustomField = [];
+  private $_exactOrderNumberCustomField = [];
   private $_exactSentErrorCustomField = [];
   private $_exactErrorMessageCustomField = [];
   private $_popsyIdCustomField = [];
@@ -130,18 +130,18 @@ class CRM_Invoicestoexact_Config {
       }
     }
     // create custom fields if not exists yet
-    $this->createExactInvoiceIdCustomField();
+    $this->createExactOrderNumberCustomField();
     $this->createExactSentErrorCustomField();
     $this->createExactErrorMessageCustomField();
   }
 
   /**
-   * Method to create or get custom field for exact invoice id
+   * Method to create or get custom field for exact order number
    */
-  private function createExactInvoiceIdCustomField() {
-    $customFieldName = 'bemas_exact_invoice_id';
+  private function createExactOrderNumberCustomField() {
+    $customFieldName = 'bemas_exact_order_number';
     try {
-      $this->_exactInvoiceIdCustomField = civicrm_api3('CustomField', 'getsingle', [
+      $this->_exactOrderNumberCustomField = civicrm_api3('CustomField', 'getsingle', [
         'name' => $customFieldName,
         'column_name' => $customFieldName,
         'custom_group_id' => $this->_contributionDataCustomGroup['id'],
@@ -153,16 +153,16 @@ class CRM_Invoicestoexact_Config {
           'custom_group_id' => $this->_contributionDataCustomGroup['id'],
           'name' => $customFieldName,
           'column_name' => $customFieldName,
-          'label' => 'Factuurnummer in Exact',
+          'label' => 'Ordernummer in Exact',
           'data_type' => 'String',
           'html_type' =>  'Text',
           'is_active' => 1,
           'is_searchable' => 1,
           'is_view' => 1,
         ]);
-        $this->_exactInvoiceIdCustomField = $createdCustomField['values'][$createdCustomField['id']];
+        $this->_exactOrderNumberCustomField = $createdCustomField['values'][$createdCustomField['id']];
       } catch (CiviCRM_API3_Exception $ex) {
-        CRM_Core_Error::createError(ts('Could not find or create custom field for exact invoice id in ')
+        CRM_Core_Error::createError(ts('Could not find or create custom field for exact order number in ')
           .__METHOD__.' (extension org.bemas.invoicestoexact');
       }
     }
@@ -372,16 +372,16 @@ class CRM_Invoicestoexact_Config {
   }
 
   /**
-   * Getter for exact invoice id custom field
+   * Getter for exact order number custom field
    *
    * @param string $key
    * @return array|mixed
    */
-  public function getExactInvoiceIdCustomField($key='id') {
-    if (!empty($key) && isset($this->_exactInvoiceIdCustomField[$key])) {
-      return $this->_exactInvoiceIdCustomField[$key];
+  public function getExactOrderNumberCustomField($key='id') {
+    if (!empty($key) && isset($this->_exactOrderNumberCustomField[$key])) {
+      return $this->_exactOrderNumberCustomField[$key];
     }  else {
-      return $this->_exactInvoiceIdCustomField;
+      return $this->_exactOrderNumberCustomField;
     }
   }
 
