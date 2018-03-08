@@ -4,10 +4,9 @@ require_once __DIR__ . '/../../exactonline-api-php-client/vendor/autoload.php';
 
 define('CLIENT_REDIRECT_URL', 'civicrm/invoicestoexact-webhook');
 
-// when this page is called directly (i.e. when exact calls the webhook
-// try to store authorization code
-CRM_Invoicestoexact_ExactHelper::clearStorage();
-CRM_Invoicestoexact_ExactHelper::redirectUrl();
+// when this page is called directly (i.e. when exact calls the webhook)
+// try to store connect again
+CRM_Invoicestoexact_ExactHelper::forcedLogin();
 
 class CRM_Invoicestoexact_ExactHelper {
   static function redirectUrl() {
@@ -38,10 +37,11 @@ class CRM_Invoicestoexact_ExactHelper {
       // clear json file
       self::clearStorage();
 
-      // try forced login
+      // try again
       self::connect();
     }
   }
+
   /*
    * contact_code
    * item_code
