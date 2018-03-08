@@ -120,6 +120,7 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
     $queryParams = array();
     $queryIndexes = array();
     $index = 0;
+
     foreach ($this->_contributionIds as $contributionId) {
       $index++;
       $queryParams[$index] = array($contributionId, 'Integer');

@@ -22,6 +22,21 @@ class CRM_Invoicestoexact_ExactHelper {
     }
   }
 
+  static function forcedLogin() {
+    // make sure we are (still) logged in
+
+    // try normal connection
+    try {
+      self::connect();
+    }
+    catch (Exception $e) {
+      // clear json file
+      file_put_contents(__DIR__ . '/storage.json', '[]');
+
+      // try forced login
+      self::connect();
+    }
+  }
   /*
    * contact_code
    * item_code
