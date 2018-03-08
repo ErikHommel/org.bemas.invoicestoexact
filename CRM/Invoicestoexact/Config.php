@@ -22,6 +22,7 @@ class CRM_Invoicestoexact_Config {
   private $_exactErrorMessageCustomField = [];
   private $_popsyIdCustomField = [];
   private $_organizationDetailsCustomGroup = NULL;
+  private $_currentMembershipStatusId = NULL;
 
   /**
    * CRM_Invoicestoexact_Config constructor.
@@ -39,6 +40,24 @@ class CRM_Invoicestoexact_Config {
     }
     $this->setOrganizationDetailsCustomGroup();
     $this->setPopsyIdCustomField();
+    try {
+      $this->_currentMembershipStatusId = civicrm_api3('MembershipStatus', 'getvalue', [
+        'name' => 'Current',
+        'return' => 'id',
+      ]);
+    }
+    catch (CiviCRM_API3_Exception $ex) {
+      CRM_Core_Error::debug_log_message(ts('Could not find a membership status Current in') . __METHOD__ . '(extension org.bemas.invoicestoexact)');
+    }
+  }
+
+  /**
+   * Getter for current membership status id
+   *
+   * @return array|null
+   */
+  public function getCurrentMembershipStatusId() {
+    return $this->_currentMembershipStatusId;
   }
 
   /**
