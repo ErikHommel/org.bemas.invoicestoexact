@@ -98,8 +98,8 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
    * @return bool
    */
   private function canInvoiceBeSent($contributionId) {
-    if (!empty($this->_data[$contributionId]['exact_invoice_id'])) {
-      $this->_data[$contributionId]['error_message'] = ts('Bijdrage heeft al een Exact factuurnummer');
+    if (!empty($this->_data[$contributionId]['exact_order_number'])) {
+      $this->_data[$contributionId]['error_message'] = ts('Bijdrage heeft al een Exact ordernummer');
       return FALSE;
     }
     if (empty($this->_data[$contributionId]['contact_code'])) {
@@ -198,6 +198,8 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
       case 0:
         $this->saveContributionCustomData($errorMessageCustomFieldId, "", $contributionId);
         $this->saveContributionCustomData($orderNumberCustomFieldId, $result['order_number'], $contributionId);
+        // update membership status to current once succesfully sent
+        $this->updateMembershipToCurrent($contributionId);
         break;
 
       case 1:
@@ -205,6 +207,45 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         $this->saveContributionCustomData($orderNumberCustomFieldId, "", $contributionId);
         break;
     }
+  }
+
+  /**
+   * Method to update a membership to current
+   *
+   * @param $contributionId
+   */
+  private function updateMembershipToCurrent($contributionId) {
+    // first get membership id, will be false if not a membership
+    $membership = $this->getMembershipForContribution($contributionId);
+    if ($membership) {
+     try {
+       $membership['status_id'] = CRM_Invoicestoexact_Config::singleton()->getCurrentMembershipStatusId();
+       civicrm_api3('Membership', 'create', $membership);
+     }
+     catch (CiviCRM_API3_Exception $ex) {
+       CRM_Core_Error::debug_log_message(ts('Could not set membership with id ' .$membership['id']
+         . ' to current with API Membershio ceate in ' . __METHOD__ . '(extension org.bemas.invoicestoexact)'));
+     }
+    }
+  }
+
+  /**
+   * Method to get membership with contribution id
+   *
+   * @param $contributionId
+   * @return array|bool
+   */
+  private function getMembershipForContribution($contributionId) {
+    try {
+      $membershipId = civicrm_api3('MembershipPayment', 'getvalue', [
+        'contribution_id' => $contributionId,
+        'return' => 'membership_id'
+      ]);
+      return civicrm_api3('Membership', 'getsingle', ['id' => $membershipId]);
+    } catch (CiviCRM_API3_Exception $ex) {
+      return FALSE;
+    }
+
   }
 
   /**
