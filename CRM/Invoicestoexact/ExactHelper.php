@@ -30,6 +30,7 @@ class CRM_Invoicestoexact_ExactHelper {
    * line_notes
    */
   static function sendInvoice($params) {
+    $returnArr = array();
 
     try {
       $connection = self::connect();// find the customer
@@ -56,14 +57,19 @@ class CRM_Invoicestoexact_ExactHelper {
       $salesInvoiceLine->Notes = $params['line_notes'];// add line to invoice
       $salesInvoice->SalesInvoiceLines = [$salesInvoiceLine];// insert invoice in Exact
       $s = $salesInvoice->insert();
-      echo "Ordernummer: " . $s['OrderNumber'] . '<br>';
-      echo "InvoiceID: " . $s['InvoiceID'] . '<br>';
-      echo "Invoice created: " . $salesInvoice->InvoiceNumber;
-      CRM_Core_Session::setStatus('Created invoice: ' . $salesInvoice->InvoiceNumber);
+
+      // success, return invoice number
+      $returnArr['is_error'] = 0;
+      $returnArr['error_message'] = '';
+      $returnArr['invoice_id'] = $salesInvoice->InvoiceNumber;
     }
     catch (Exception $e) {
-      CRM_Core_Session::setStatus($e->getMessage());
+      $returnArr['is_error'] = 1;
+      $returnArr['error_message'] = $e->getMessage();
+      $returnArr['invoice_id'] = -1;
     }
+
+    return $returnArr;
   }
 
   /***********************************************************
