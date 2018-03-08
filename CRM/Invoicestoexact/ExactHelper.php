@@ -33,40 +33,52 @@ class CRM_Invoicestoexact_ExactHelper {
     $returnArr = array();
 
     try {
-      $connection = self::connect();// find the customer
+      $connection = self::connect();
+
+      // find the customer
       $customerFinder = new \Picqer\Financials\Exact\Account($connection);
       $c = $customerFinder->filter("trim(Code) eq '" . $params['contact_code'] . "'");
       if (count($c) !== 1) {
         throw new Exception("klant niet gevonden");
       }
-      $customer = $c[0];// find the product
+      $customer = $c[0];
+
+      // find the product (article)
       $itemFinder = new Picqer\Financials\Exact\Item($connection);
       $i = $itemFinder->filter("Code eq '" . $params['item_code'] . "'");
       if (count($i) !== 1) {
         throw new Exception("artikel niet gevonden");
       }
-      $item = $i[0];// create the invoice
+      $item = $i[0];
+
+      // create the invoice
       $salesInvoice = new \Picqer\Financials\Exact\SalesInvoice($connection);
       $salesInvoice->InvoiceTo = $customer->ID;
       $salesInvoice->OrderedBy = $customer->ID;
       $salesInvoice->Description = $params['invoice_description'];// add an invoice line
+
+      // create the invoice line
       $salesInvoiceLine = new \Picqer\Financials\Exact\SalesInvoiceLine($connection);
       $salesInvoiceLine->Item = $item->ID;
       $salesInvoiceLine->Quantity = 1;
       $salesInvoiceLine->UnitPrice = $params['unit_price'];
-      $salesInvoiceLine->Notes = $params['line_notes'];// add line to invoice
-      $salesInvoice->SalesInvoiceLines = [$salesInvoiceLine];// insert invoice in Exact
+      $salesInvoiceLine->Notes = $params['line_notes'];
+
+      // add line to invoice
+      $salesInvoice->SalesInvoiceLines = array($salesInvoiceLine);
+
+      // send to Exact!
       $s = $salesInvoice->insert();
 
-      // success, return invoice number
+      // success, return the order number
       $returnArr['is_error'] = 0;
       $returnArr['error_message'] = '';
-      $returnArr['invoice_id'] = $salesInvoice->InvoiceNumber;
+      $returnArr['order_number'] = $s['OrderNumber'];
     }
     catch (Exception $e) {
       $returnArr['is_error'] = 1;
       $returnArr['error_message'] = $e->getMessage();
-      $returnArr['invoice_id'] = -1;
+      $returnArr['order_number'] = -1;
     }
 
     return $returnArr;
