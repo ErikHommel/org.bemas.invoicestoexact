@@ -7,7 +7,6 @@ define('CLIENT_REDIRECT_URL', 'civicrm/invoicestoexact-webhook');
 // when this page is called directly (i.e. when exact calls the webhook)
 // try to store connect again
 CRM_Invoicestoexact_ExactHelper::redirectUrl();
-$url = CRM_Utils_System::url('civicrm/contribute/search', 'reset=1');
 echo "U zou nu aangemeld moeten zijn in Exact. <a href=\"$url\">Ga naar bijdragen zoeken.</a>";
 
 class CRM_Invoicestoexact_ExactHelper {
