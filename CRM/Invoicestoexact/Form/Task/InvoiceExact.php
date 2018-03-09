@@ -20,7 +20,8 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
     foreach ($this->_contributionIds as $contributionId) {
       if ($this->canInvoiceBeSent($contributionId)) {
         $this->buildCorrectElement($contributionId);
-      } else {
+      }
+      else {
         $this->buildErrorElement($contributionId);
         if (($key = array_search($contributionId, $this->_contributionIds)) !== FALSE) {
           unset($this->_contributionIds[$key]);
@@ -29,9 +30,9 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
     }
     $this->assign('correctElements', $this->_correctElements);
     $this->assign('errorElements', $this->_errorElements);
-    $this->addButtons(array(
-      array('type' => 'next', 'name' => ts('Confirm'), 'isDefault' => true,),
-      array('type' => 'cancel', 'name' => ts('Cancel'),),));
+    $this->addButtons([
+      ['type' => 'next', 'name' => ts('Confirm'), 'isDefault' => TRUE],
+      ['type' => 'cancel', 'name' => ts('Cancel')]]);
   }
 
   /**
@@ -40,12 +41,12 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
    * @param $contributionId
    */
   private function buildCorrectElement($contributionId) {
-    $contactElement = 'contact_'.$contributionId;
-    $dataElement = 'data_'.$contributionId;
-    $this->_correctElements[$contributionId] = array(
+    $contactElement = 'contact_' . $contributionId;
+    $dataElement = 'data_' . $contributionId;
+    $this->_correctElements[$contributionId] = [
       'contact' => $contactElement,
       'data' => $dataElement,
-    );
+    ];
     $this->add('text', $contactElement);
     $this->add('text', $dataElement);
   }
@@ -56,19 +57,20 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
    * @return array|NULL
    */
   public function setDefaultValues() {
-    $defaults = array();
+    $defaults = [];
     foreach ($this->_correctElements as $correctId => $correct) {
       $defaults[$correct['contact']] = $this->_data[$correctId]['display_name'];
-      $defaults[$correct['data']] = 'Contact code: '.$this->_data[$correctId]['contact_code'].', item code: '.
-        $this->_data[$correctId]['item_code'].' met bedrag '.CRM_Utils_Money::format($this->_data[$correctId]['unit_price']);
+      $defaults[$correct['data']] = 'Contact code: ' . $this->_data[$correctId]['contact_code'] . ', item code: ' .
+        $this->_data[$correctId]['item_code'] . ' met bedrag ' . CRM_Utils_Money::format($this->_data[$correctId]['unit_price']);
     }
     foreach ($this->_errorElements as $errorId => $error) {
       if ($this->_data[$errorId]['entity_table'] == 'civicrm_membership') {
         $entityLine = 'Lidmaatschap';
-      } else {
+      }
+      else {
         $entityLine = '';
       }
-      $defaults[$error['contact']] = $this->_data[$errorId]['display_name'].' '.$entityLine;
+      $defaults[$error['contact']] = $this->_data[$errorId]['display_name'] . ' ' . $entityLine;
       $defaults[$error['message']] = $this->_data[$errorId]['error_message'];
     }
     return $defaults;
@@ -80,12 +82,12 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
    * @param $contributionId
    */
   private function buildErrorElement($contributionId) {
-    $contactElement = 'contact_'.$contributionId;
-    $messageElement = 'message_'.$contributionId;
-    $this->_errorElements[$contributionId] = array(
+    $contactElement = 'contact_' . $contributionId;
+    $messageElement = 'message_' . $contributionId;
+    $this->_errorElements[$contributionId] = [
       'contact' => $contactElement,
       'message' => $messageElement,
-    );
+    ];
     $this->add('text', $contactElement);
     $this->add('text', $messageElement);
   }
@@ -117,13 +119,13 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
    * Method to build the relevant data for all potential invoices
    */
   private function buildData() {
-    $queryParams = array();
-    $queryIndexes = array();
+    $queryParams = [];
+    $queryIndexes = [];
     $index = 0;
     foreach ($this->_contributionIds as $contributionId) {
       $index++;
-      $queryParams[$index] = array($contributionId, 'Integer');
-      $queryIndexes[] = '%'.$index;
+      $queryParams[$index] = [$contributionId, 'Integer'];
+      $queryIndexes[] = '%' . $index;
     }
     if (!empty($queryParams)) {
       $contactCodeColumn = CRM_Invoicestoexact_Config::singleton()->getPopsyIdCustomField('column_name');
@@ -135,14 +137,14 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
       c.unit_price, d.' . $contactCodeColumn . ', e.' . $orderNumberColumn . ', f.value AS item_code 
       FROM civicrm_contribution a JOIN civicrm_contact b ON a.contact_id = b.id
       LEFT JOIN civicrm_line_item c ON a.id = c.contribution_id
-      LEFT JOIN '.$orgDetTableName.' d ON a.contact_id = d.entity_id
-      LEFT JOIN '.$contDataTableName.' e ON a.id = e.entity_id
-      LEFT JOIN civicrm_option_value f ON c.label = f.label AND f.option_group_id = '.$invoiceOptionGroupId.
-      ' WHERE a.id IN('.implode(', ', $queryIndexes).')';
+      LEFT JOIN ' . $orgDetTableName . ' d ON a.contact_id = d.entity_id
+      LEFT JOIN ' . $contDataTableName . ' e ON a.id = e.entity_id
+      LEFT JOIN civicrm_option_value f ON c.label = f.label AND f.option_group_id = ' . $invoiceOptionGroupId .
+      ' WHERE a.id IN(' . implode(', ', $queryIndexes) . ')';
 
       $dao = CRM_Core_DAO::executeQuery($query, $queryParams);
       while ($dao->fetch()) {
-        $this->_data[$dao->contribution_id] = array(
+        $this->_data[$dao->contribution_id] = [
           'contact_id' => $dao->contact_id,
           'display_name' => $dao->display_name,
           'entity_table' => $dao->entity_table,
@@ -151,16 +153,81 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
           'contact_code' => $dao->$contactCodeColumn,
           'exact_order_number' => $dao->$orderNumberColumn,
           'item_code' => $dao->item_code,
-          'line_notes' => 'Test Notitie',
-        );
+          'line_notes' => $this->generateLineNotes($dao->contact_id),
+        ];
       }
     }
+  }
+
+  /**
+   * Method to generate line notes based on members of organization
+   *
+   * @param $contactId
+   * @return string
+   */
+  private function generateLineNotes($contactId) {
+    $primaryLines = [];
+    $memberLines = [];
+    $lineNotes = '';
+    $typeOfMemberContactColumn = CRM_Invoicestoexact_Config::singleton()->getTypesOfMemberContactCustomField('column_name');
+    // find all employees of the contact where type of member contact is m1 or mc
+    $sqlArray = $this->getMemberContactsQuery($contactId);
+    if (isset($sqlArray['query']) && !empty($sqlArray['query']) && isset($sqlArray['queryParams'])) {
+      $dao = CRM_Core_DAO::executeQuery($sqlArray['query'], $sqlArray['queryParams']);
+      while ($dao->fetch()) {
+        switch ($dao->$typeOfMemberContactColumn) {
+          case CRM_Invoicestoexact_Config::singleton()->getPrimaryMemberTypeValue():
+            $primaryLines[] = $dao->display_name;
+            break;
+
+          case CRM_Invoicestoexact_Config::singleton()->getMemberTypeValue():
+            $memberLines[] = $dao->display_name;
+            break;
+        }
+      }
+      if (!empty($primaryLines)) {
+        $lineNotes = implode(", ", $primaryLines) . "\n";
+      }
+      if (!empty($memberLines)) {
+        $lineNotes .= implode(", ", $memberLines);
+      }
+    }
+    return $lineNotes;
+  }
+
+  /**
+   * Method to build query for member contacts
+   *
+   * @param $contactId
+   * @return array
+   *
+   */
+  private function getMemberContactsQuery($contactId) {
+    $typeOfMemberContactColumn = CRM_Invoicestoexact_Config::singleton()->getTypesOfMemberContactCustomField('column_name');
+    $indDetailsTable = CRM_Invoicestoexact_Config::singleton()->getIndividualDetailsCustomGroup('table_name');
+    $result = [];
+    $result['query'] = 'SELECT emp.display_name, ind.' . $typeOfMemberContactColumn . '
+      FROM civicrm_relationship AS rel
+      JOIN civicrm_contact AS emp ON rel.contact_id_a = emp.id
+      LEFT JOIN ' . $indDetailsTable . ' ind ON emp.id = ind.entity_id
+      WHERE rel.relationship_type_id = %1 AND rel.contact_id_b = %2 AND ' . $typeOfMemberContactColumn . ' IN (%3, %4)
+      ORDER BY emp.display_name';
+    $result['queryParams'] = [
+      1 => [CRM_Invoicestoexact_Config::singleton()->getEmployerRelationshipTypeId(), 'Integer'],
+      2 => [$contactId, 'Integer'],
+      3 => [CRM_Invoicestoexact_Config::singleton()->getPrimaryMemberTypeValue(), 'String'],
+      4 => [CRM_Invoicestoexact_Config::singleton()->getMemberTypeValue(), 'String'],
+    ];
+    return $result;
   }
 
   /**
    * Overridden method to process form submission
    */
   public function postProcess() {
+    if (!empty($this->_contributionIds)) {
+      CRM_Invoicestoexact_ExactHelper::forcedLogIn();
+    }
     foreach ($this->_contributionIds as $contributionId) {
       $data = array(
         'contact_code' => $this->_data[$contributionId]['contact_code'],
@@ -218,14 +285,14 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
     // first get membership id, will be false if not a membership
     $membership = $this->getMembershipForContribution($contributionId);
     if ($membership) {
-     try {
-       $membership['status_id'] = CRM_Invoicestoexact_Config::singleton()->getCurrentMembershipStatusId();
-       civicrm_api3('Membership', 'create', $membership);
-     }
-     catch (CiviCRM_API3_Exception $ex) {
-       CRM_Core_Error::debug_log_message(ts('Could not set membership with id ' .$membership['id']
-         . ' to current with API Membershio ceate in ' . __METHOD__ . '(extension org.bemas.invoicestoexact)'));
-     }
+      try {
+        $membership['status_id'] = CRM_Invoicestoexact_Config::singleton()->getCurrentMembershipStatusId();
+        civicrm_api3('Membership', 'create', $membership);
+      }
+      catch (CiviCRM_API3_Exception $ex) {
+        CRM_Core_Error::debug_log_message(ts('Could not set membership with id ' . $membership['id']
+        . ' to current with API Membershio ceate in ' . __METHOD__ . '(extension org.bemas.invoicestoexact)'));
+      }
     }
   }
 
@@ -242,7 +309,8 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         'return' => 'membership_id'
       ]);
       return civicrm_api3('Membership', 'getsingle', ['id' => $membershipId]);
-    } catch (CiviCRM_API3_Exception $ex) {
+    }
+    catch (CiviCRM_API3_Exception $ex) {
       return FALSE;
     }
 
@@ -260,7 +328,7 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
       civicrm_api3('CustomValue', 'create', [
         'entity_id' => $contributionId,
         'entity_table' => 'civicrm_contribution',
-        'custom_'.$customFieldId => $value,
+        'custom_' . $customFieldId => $value,
       ]);
     }
     catch (CiviCRM_API3_Exception $ex) {

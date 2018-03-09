@@ -21,8 +21,13 @@ class CRM_Invoicestoexact_Config {
   private $_exactSentErrorCustomField = [];
   private $_exactErrorMessageCustomField = [];
   private $_popsyIdCustomField = [];
-  private $_organizationDetailsCustomGroup = NULL;
+  private $_organizationDetailsCustomGroup = [];
+  private $_individualDetailsCustomGroup = [];
   private $_currentMembershipStatusId = NULL;
+  private $_typesOfMemberContactCustomField = [];
+  private $_employerRelationshipTypeId = NULL;
+  private $_primaryMemberTypeValue = NULL;
+  private $_memberTypeValue = NULL;
 
   /**
    * CRM_Invoicestoexact_Config constructor.
@@ -39,6 +44,8 @@ class CRM_Invoicestoexact_Config {
       $this->addClientIDandSecretItem();
     }
     $this->setOrganizationDetailsCustomGroup();
+    $this->setIndividualDetailsCustomGroup();
+    $this->setTypesOfMemberContactCustomField();
     $this->setPopsyIdCustomField();
     try {
       $this->_currentMembershipStatusId = civicrm_api3('MembershipStatus', 'getvalue', [
@@ -47,8 +54,36 @@ class CRM_Invoicestoexact_Config {
       ]);
     }
     catch (CiviCRM_API3_Exception $ex) {
-      CRM_Core_Error::debug_log_message(ts('Could not find a membership status Current in') . __METHOD__ . '(extension org.bemas.invoicestoexact)');
+      CRM_Core_Error::debug_log_message(ts('Could not find a membership status Current in') . __METHOD__ . ' (extension org.bemas.invoicestoexact)');
     }
+    try {
+      $this->_employerRelationshipTypeId = civicrm_api3('RelationshipType', 'getvalue', [
+        'name_a_b' => 'Employee of',
+        'name_b_a' => 'Employer of',
+        'return' => 'id',
+      ]);
+    }
+    catch (CiviCRM_API3_Exception $ex) {
+      CRM_Core_Error::createError(ts('Couldn not find employee/employer relationship in ') . __METHOD__ . ' (extension org.bemas.invoicestoexact)');
+    }
+  }
+
+  /**
+   * Getter for primary member contact value
+   *
+   * @return null
+   */
+  public function getPrimaryMemberTypeValue() {
+    return $this->_primaryMemberTypeValue;
+  }
+
+  /**
+   * Getter for member contact value
+   *
+   * @return null
+   */
+  public function getMemberTypeValue() {
+    return $this->_memberTypeValue;
   }
 
   /**
@@ -72,9 +107,19 @@ class CRM_Invoicestoexact_Config {
         'name' => 'bemas_exact_client_id',
         'return' => 'value',
       ]);
-    } catch (CiviCRM_API3_Exception $ex) {
+    }
+    catch (CiviCRM_API3_Exception $ex) {
       CRM_Core_Error::createError(ts('Could not find Exact Client ID, not possible to connect to Exact. Contact your system administrator'));
     }
+  }
+
+  /**
+   * Getter for employer relationship type id
+   *
+   * @return array|null
+   */
+  public function getEmployerRelationshipTypeId() {
+    return $this->_employerRelationshipTypeId;
   }
 
   /**
@@ -89,7 +134,8 @@ class CRM_Invoicestoexact_Config {
         'name' => 'bemas_exact_client_secret',
         'return' => 'value',
       ]);
-    } catch (CiviCRM_API3_Exception $ex) {
+    }
+    catch (CiviCRM_API3_Exception $ex) {
       CRM_Core_Error::createError(ts('Could not find Exact Client Secret, not possible to connect to Exact. Contact your system administrator'));
     }
   }
@@ -106,6 +152,17 @@ class CRM_Invoicestoexact_Config {
   }
 
   /**
+   * Method to find and set the individual details custom group
+   */
+  private function setIndividualDetailsCustomGroup() {
+    try {
+      $this->_individualDetailsCustomGroup = civicrm_api3('CustomGroup', 'getsingle', ['name' => 'Individual_details']);
+    }
+    catch (CiviCRM_API3_Exception $ex) {
+    }
+  }
+
+  /**
    * Method to find and set the custom field popsy_id_25
    */
   private function setPopsyIdCustomField() {
@@ -114,6 +171,49 @@ class CRM_Invoicestoexact_Config {
         'name' => 'POPSY_ID',
         'custom_group_id' => $this->_organizationDetailsCustomGroup['id'],
       ]);
+    }
+    catch (CiviCRM_API3_Exception $ex) {
+    }
+  }
+
+  /**
+   * Method to find and set the custom field for type of member contact
+   */
+  private function setTypesOfMemberContactCustomField() {
+    try {
+      $this->_typesOfMemberContactCustomField = civicrm_api3('CustomField', 'getsingle', [
+        'name' => 'Types_of_member_contact',
+        'custom_group_id' => $this->_individualDetailsCustomGroup['id'],
+      ]);
+      // if ok, also set the primary and member type values
+      $this->setTypesOfMemberValues();
+    }
+    catch (CiviCRM_API3_Exception $ex) {
+    }
+  }
+
+  /**
+   * Method to set the types of member contact values (used to build the line notes for the exact invoice)
+   */
+  private function setTypesOfMemberValues() {
+    try {
+      $optionValues = civicrm_api3('OptionValue', 'get', [
+        'option_group_id' => $this->_typesOfMemberContactCustomField['option_group_id'],
+        'is_active' => 1,
+        'sequential' => 1,
+        'options' => ['limit' => 0],
+      ]);
+      foreach ($optionValues['values'] as $optionValue) {
+        switch ($optionValue['name']) {
+          case 'Member_contact':
+            $this->_memberTypeValue = $optionValue['value'];
+            break;
+
+          case 'Primary_member_contact':
+            $this->_primaryMemberTypeValue = $optionValue['value'];
+            break;
+        }
+      }
     }
     catch (CiviCRM_API3_Exception $ex) {
     }
@@ -145,7 +245,7 @@ class CRM_Invoicestoexact_Config {
       }
       catch (CiviCRM_API3_Exception $ex) {
         CRM_Core_Error::createError(ts('Could not find or create custom group for contribution data in ')
-          .__METHOD__.' (extension org.bemas.invoicestoexact');
+          . __METHOD__ . ' (extension org.bemas.invoicestoexact');
       }
     }
     // create custom fields if not exists yet
@@ -174,15 +274,16 @@ class CRM_Invoicestoexact_Config {
           'column_name' => $customFieldName,
           'label' => 'Ordernummer in Exact',
           'data_type' => 'String',
-          'html_type' =>  'Text',
+          'html_type' => 'Text',
           'is_active' => 1,
           'is_searchable' => 1,
           'is_view' => 1,
         ]);
         $this->_exactOrderNumberCustomField = $createdCustomField['values'][$createdCustomField['id']];
-      } catch (CiviCRM_API3_Exception $ex) {
+      }
+      catch (CiviCRM_API3_Exception $ex) {
         CRM_Core_Error::createError(ts('Could not find or create custom field for exact order number in ')
-          .__METHOD__.' (extension org.bemas.invoicestoexact');
+          . __METHOD__ . ' (extension org.bemas.invoicestoexact');
       }
     }
   }
@@ -207,15 +308,16 @@ class CRM_Invoicestoexact_Config {
           'column_name' => $customFieldName,
           'label' => 'Fout bij sturen naar Exact?',
           'data_type' => 'Boolean',
-          'html_type' =>  'Radio',
+          'html_type' => 'Radio',
           'is_active' => 1,
           'is_searchable' => 1,
           'is_view' => 1,
         ]);
         $this->_exactSentErrorCustomField = $createdCustomField['values'][$createdCustomField['id']];
-      } catch (CiviCRM_API3_Exception $ex) {
+      }
+      catch (CiviCRM_API3_Exception $ex) {
         CRM_Core_Error::createError(ts('Could not find or create custom field for exact error sent in ')
-          .__METHOD__.' (extension org.bemas.invoicestoexact');
+          . __METHOD__ . ' (extension org.bemas.invoicestoexact');
       }
     }
   }
@@ -240,19 +342,19 @@ class CRM_Invoicestoexact_Config {
           'column_name' => $customFieldName,
           'label' => 'Foutboodschap van Exact',
           'data_type' => 'Memo',
-          'html_type' =>  'TextArea',
+          'html_type' => 'TextArea',
           'is_active' => 1,
           'is_searchable' => 1,
           'is_view' => 1,
         ]);
         $this->_exactErrorMessageCustomField = $createdCustomField['values'][$createdCustomField['id']];
-      } catch (CiviCRM_API3_Exception $ex) {
+      }
+      catch (CiviCRM_API3_Exception $ex) {
         CRM_Core_Error::createError(ts('Could not find or create custom field for exact error message in ')
-          .__METHOD__.' (extension org.bemas.invoicestoexact');
+          . __METHOD__ . ' (extension org.bemas.invoicestoexact');
       }
     }
   }
-
 
   /**
    * Method to find or create option group
@@ -261,7 +363,7 @@ class CRM_Invoicestoexact_Config {
    * @param null $optionGroupTitle
    * @return array
    */
-  private function createOptionGroupIfNotExists($optionGroupName, $optionGroupTitle=NULL) {
+  private function createOptionGroupIfNotExists($optionGroupName, $optionGroupTitle = NULL) {
     try {
       return civicrm_api3('OptionGroup', 'getsingle', array(
         'name' => $optionGroupName,
@@ -280,14 +382,14 @@ class CRM_Invoicestoexact_Config {
           'name' => $optionGroupName,
           'title' => $optionGroupTitle,
           'is_active' => 1,
-          'is_reserved' => 1
+          'is_reserved' => 1,
         ));
 
         return $optionGroup['values'][$optionGroup['id']];
       }
       catch (CiviCRM_API3_Exception $ex) {
-        CRM_Core_Error::createError(ts('Could not find or create an option group with name ').$optionGroupName.' in '.__METHOD__
-          .' (extension org.bemas.invoicestoexact');
+        CRM_Core_Error::createError(ts('Could not find or create an option group with name ') . $optionGroupName
+          . ' in ' . __METHOD__ . ' (extension org.bemas.invoicestoexact');
       }
     }
     return NULL;
@@ -309,7 +411,7 @@ class CRM_Invoicestoexact_Config {
           'label' => $membershipType['name'],
           'is_active' => 1,
           'is_reserved' => 1,
-          'value' => ts('Dummy Exact Artikel code voor Lidmaatschapstype ').$membershipType['name'].':',
+          'value' => ts('Dummy Exact Artikel code voor Lidmaatschapstype ') . $membershipType['name'] . ':',
         ));
       }
     }
@@ -368,10 +470,11 @@ class CRM_Invoicestoexact_Config {
    * @param string $key
    * @return array|mixed
    */
-  public function getItemsExactOptionGroup($key='id') {
+  public function getItemsExactOptionGroup($key = 'id') {
     if (!empty($key) && isset($this->_itemsExactOptionGroup[$key])) {
       return $this->_itemsExactOptionGroup[$key];
-    } else {
+    }
+    else {
       return $this->_itemsExactOptionGroup;
     }
   }
@@ -382,10 +485,11 @@ class CRM_Invoicestoexact_Config {
    * @param string $key
    * @return array|string
    */
-  public function getPopsyIdCustomField($key='id') {
+  public function getPopsyIdCustomField($key = 'id') {
     if (!empty($key) && isset($this->_popsyIdCustomField[$key])) {
       return $this->_popsyIdCustomField[$key];
-    } else {
+    }
+    else {
       return $this->_popsyIdCustomField;
     }
   }
@@ -396,10 +500,11 @@ class CRM_Invoicestoexact_Config {
    * @param string $key
    * @return array|mixed
    */
-  public function getExactOrderNumberCustomField($key='id') {
+  public function getExactOrderNumberCustomField($key = 'id') {
     if (!empty($key) && isset($this->_exactOrderNumberCustomField[$key])) {
       return $this->_exactOrderNumberCustomField[$key];
-    }  else {
+    }
+    else {
       return $this->_exactOrderNumberCustomField;
     }
   }
@@ -410,10 +515,11 @@ class CRM_Invoicestoexact_Config {
    * @param string $key
    * @return array|mixed
    */
-  public function getExactSentErrorCustomField($key='id') {
+  public function getExactSentErrorCustomField($key = 'id') {
     if (!empty($key) && isset($this->_exactSentErrorCustomField[$key])) {
       return $this->_exactSentErrorCustomField[$key];
-    }  else {
+    }
+    else {
       return $this->_exactSentErrorCustomField;
     }
   }
@@ -424,11 +530,42 @@ class CRM_Invoicestoexact_Config {
    * @param string $key
    * @return array|mixed
    */
-  public function getExactErrorMessageCustomField($key='id') {
+  public function getExactErrorMessageCustomField($key = 'id') {
     if (!empty($key) && isset($this->_exactErrorMessageCustomField[$key])) {
       return $this->_exactErrorMessageCustomField[$key];
-    }  else {
+    }
+    else {
       return $this->_exactErrorMessageCustomField;
+    }
+  }
+
+  /**
+   * Getter for type of member contact custom field
+   *
+   * @param string $key
+   * @return array|mixed
+   */
+  public function getTypesOfMemberContactCustomField($key = 'id') {
+    if (!empty($key) && isset($this->_typesOfMemberContactCustomField[$key])) {
+      return $this->_typesOfMemberContactCustomField[$key];
+    }
+    else {
+      return $this->_typesOfMemberContactCustomField;
+    }
+  }
+
+  /**
+   * Getter for individual details custom group
+   *
+   * @param string $key
+   * @return array|mixed
+   */
+  public function getIndividualDetailsCustomGroup($key = 'id') {
+    if (!empty($key) && isset($this->_individualDetailsCustomGroup[$key])) {
+      return $this->_individualDetailsCustomGroup[$key];
+    }
+    else {
+      return $this->_individualDetailsCustomGroup;
     }
   }
 
@@ -438,10 +575,11 @@ class CRM_Invoicestoexact_Config {
    * @param string $key
    * @return array|mixed
    */
-  public function getOrganizationDetailsCustomGroup($key='id') {
+  public function getOrganizationDetailsCustomGroup($key = 'id') {
     if (!empty($key) && isset($this->_organizationDetailsCustomGroup[$key])) {
       return $this->_organizationDetailsCustomGroup[$key];
-    } else {
+    }
+    else {
       return $this->_organizationDetailsCustomGroup;
     }
   }
@@ -452,10 +590,11 @@ class CRM_Invoicestoexact_Config {
    * @param string $key
    * @return array|mixed
    */
-  public function getContributionDataCustomGroup($key='id') {
+  public function getContributionDataCustomGroup($key = 'id') {
     if (!empty($key) && isset($this->_contributionDataCustomGroup[$key])) {
       return $this->_contributionDataCustomGroup[$key];
-    } else {
+    }
+    else {
       return $this->_contributionDataCustomGroup;
     }
   }
@@ -478,9 +617,7 @@ class CRM_Invoicestoexact_Config {
    * Method to enable option groups
    */
   public static function enableOptionGroups() {
-    $optionGroupNames = array(
-      'bemas_items_to_exact',
-      );
+    $optionGroupNames = ['bemas_items_to_exact', 'bemas_exact_credentials'];
     foreach ($optionGroupNames as $optionGroupName) {
       try {
         //first get id of option group based on name
@@ -514,9 +651,7 @@ class CRM_Invoicestoexact_Config {
    * Method to disable option groups
    */
   public static function disableOptionGroups() {
-    $optionGroupNames = array(
-      'bemas_items_to_exact',
-      );
+    $optionGroupNames = ['bemas_items_to_exact', 'bemas_exact_credentials'];
     foreach ($optionGroupNames as $optionGroupName) {
       try {
         //first get id of option group based on name
@@ -547,9 +682,7 @@ class CRM_Invoicestoexact_Config {
   }
 
   public static function uninstallOptionGroups() {
-    $optionGroupNames = array(
-      'bemas_items_to_exact',
-    );
+    $optionGroupNames = ['bemas_items_to_exact', 'bemas_exact_credentials'];
     foreach ($optionGroupNames as $optionGroupName) {
       try {
         //first get id of option group based on name
