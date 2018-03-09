@@ -101,7 +101,7 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
    */
   private function canInvoiceBeSent($contributionId) {
     if (!empty($this->_data[$contributionId]['exact_order_number'])) {
-      $this->_data[$contributionId]['error_message'] = ts('Bijdrage heeft al een Exact ordernummer');
+      $this->_data[$contributionId]['error_message'] = ts('Bijdrage heeft al een Exact ordernummer en de factuur is al verstuurd naar Exact.');
       return FALSE;
     }
     if (empty($this->_data[$contributionId]['contact_code'])) {
@@ -238,6 +238,8 @@ Employee(s) currently designated as member contact(s) in our records:will be aut
    * Overridden method to process form submission
    */
   public function postProcess() {
+    $countSucceed = 0;
+    $countFailed = 0;
     foreach ($this->_contributionIds as $contributionId) {
       $data = array(
         'contact_code' => $this->_data[$contributionId]['contact_code'],
@@ -252,8 +254,12 @@ Employee(s) currently designated as member contact(s) in our records:will be aut
           . ' (extension org.bemas.invoicestoexact)');
       }
       else {
-        $this->processResultFromExact($result, $contributionId);
+        $this->processResultFromExact($result, $contributionId, $countSucceed, $countFailed);
       }
+    }
+    if (!empty($countSucceed) || !empty($countFailed)) {
+      CRM_Core_Session::setStatus(ts('Invoices Sent to Exact'), ts($countSucceed . ' invoices sent to Exact, '
+        . $countFailed . ' failed'), 'info');
     }
     parent::postProcess();
   }
@@ -265,14 +271,17 @@ Employee(s) currently designated as member contact(s) in our records:will be aut
    *
    * @param array $result
    * @param int $contributionId
+   * @param int $countSucceed
+   * @param int $countFailed
    */
-  private function processResultFromExact($result, $contributionId) {
+  private function processResultFromExact($result, $contributionId, &$countSucceed, &$countFailed) {
     $sentErrorCustomFieldId = CRM_Invoicestoexact_Config::singleton()->getExactSentErrorCustomField('id');
     $errorMessageCustomFieldId = CRM_Invoicestoexact_Config::singleton()->getExactErrorMessageCustomField('id');
     $orderNumberCustomFieldId = CRM_Invoicestoexact_Config::singleton()->getExactOrderNumberCustomField('id');
     $this->saveContributionCustomData($sentErrorCustomFieldId, $result['is_error'], $contributionId);
     switch ($result['is_error']) {
       case 0:
+        $countSucceed++;
         $this->saveContributionCustomData($errorMessageCustomFieldId, "", $contributionId);
         $this->saveContributionCustomData($orderNumberCustomFieldId, $result['order_number'], $contributionId);
         // update membership status to current once succesfully sent
@@ -280,6 +289,7 @@ Employee(s) currently designated as member contact(s) in our records:will be aut
         break;
 
       case 1:
+        $countFailed++;
         $this->saveContributionCustomData($errorMessageCustomFieldId, $result['error_message'], $contributionId);
         $this->saveContributionCustomData($orderNumberCustomFieldId, "", $contributionId);
         break;
