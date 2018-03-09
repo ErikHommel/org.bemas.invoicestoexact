@@ -4,6 +4,12 @@ require_once __DIR__ . '/../../exactonline-api-php-client/vendor/autoload.php';
 
 define('CLIENT_REDIRECT_URL', 'civicrm/invoicestoexact-webhook');
 
+// check if we have to clear the json file
+if (isset($_GET['clearjson'])) {
+  CRM_Invoicestoexact_ExactHelper::clearStorage();
+  CRM_Core_Session::setStatus("De opgelsagen logingegevens zijn gewist.");
+}
+
 // when this page is called directly (i.e. when exact calls the webhook)
 // try to store connect again
 CRM_Invoicestoexact_ExactHelper::redirectUrl();
@@ -11,7 +17,13 @@ $url = CRM_Utils_System::url('civicrm/contribute/search', 'reset=1');
 echo "Indien het inloggen in Exact gelukt is, kan je nu <a href=\"$url\">de bijdragen zoeken</a> die je wilt factureren.<br><br>";
 $url = 'https://start.exactonline.be/api/oauth2/auth?client_id=' . CRM_Invoicestoexact_Config::singleton()->getExactClientId();
 $url .= '&redirect_uri=https%3A%2F%2Fwww.bemas.org%2Fnl%2Fcivicrm%2Finvoicestoexact-webhook&response_type=code&force_login=1';
-echo "Indien het nog niet werkt, kan je hier <a href=\"$url\">aanmelden in Exact</a>";
+echo "Indien het nog niet werkt, kan je hier <a href=\"$url\">aanmelden in Exact</a>.";
+echo "<br><br>";
+$url = CRM_Utils_System::url(CLIENT_REDIRECT_URL, 'clearjson=1');
+echo "Indien nodig, kan je de <a href=\"$url\">opgeslagen logingegevens wissen</a>.";
+
+
+
 
 
 class CRM_Invoicestoexact_ExactHelper {
