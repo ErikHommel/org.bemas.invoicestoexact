@@ -177,14 +177,11 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
 
     // add standard general conditions
     $lineNotes = "Het bedrijfslidmaatschap bij BEMAS wordt automatisch verlengd per kalenderjaar en is jaarlijks opzegbaar vóór 31/12. Alle werknemers kunnen aan ledentarief deelnemen aan de studiesessies en opleidingen. De hieronder vermelde lidcontacten ontvangen ook de magazines, het jaarboek en alle communicatie gericht naar onze leden. De lidcontacten kunnen ten allen tijde gewijzigd worden via e-mail naar office@bemas.org\n
-\n
 Sans avis de désaffiliation avant le 31/12, l’affiliation d'entreprise à la BEMAS est prolongée automatiquement par année calendrier. Tous les employé(e)s de l'entreprise peuvent assister aux activités et formations au tarif membre. Les contacts affiliés, mentionnés ci-dessous, reçoivent également les magazines, l’annuaire et toute communication destinée à nos membres. Les contacts affiliés peuvent être modifiés à tout moment par courrier électronique à office@bemas.org.\n 
-\n
 The corporate membership of BEMAS is renewed automatically for one calendar year and can be terminated annually before Dec 31st. All employees can participate at the member activities and trainings at a special member rate. The member contacts listed below also receive the magazine(s), the yearbook and all communications addressed to our members. The member contacts can be changed at all times by sending an email to office@bemas.org.\n 
-\n
 Werknemer(s) die momenteel als lidcontact is (zijn) genoteerd:\n
 Employé(s) actuellement noté(s) en tant que contact(s) affilié(s):\n
-Employee(s) currently designated as member contact(s) in our records:will be automatically renewed and is annually terminable.\n";
+Employee(s) currently designated as member contact(s) in our records:will be automatically renewed and is annually terminable.\n\n";
 
     // find all employees of the contact where type of member contact is m1 or mc
     $sqlArray = $this->getMemberContactsQuery($contactId);
