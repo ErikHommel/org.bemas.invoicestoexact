@@ -7,9 +7,8 @@ define('CLIENT_REDIRECT_URL', 'civicrm/invoicestoexact-webhook');
 // when this page is called directly (i.e. when exact calls the webhook)
 // try to store connect again
 CRM_Invoicestoexact_ExactHelper::redirectUrl();
-$session = CRM_Core_Session::singleton();
-$session->pushUserContext(CRM_Utils_System::url('civicrm/contribute/search', 'reset=1'));
-echo "OK";
+$url = CRM_Utils_System::url('civicrm/contribute/search', 'reset=1');
+echo "U zou nu aangemeld moeten zijn in Exact. <a href=\"$url\">Ga naar bijdragen zoeken.</a>";
 
 class CRM_Invoicestoexact_ExactHelper {
   static function redirectUrl() {
@@ -30,11 +29,16 @@ class CRM_Invoicestoexact_ExactHelper {
   }
 
   static function forcedLogin() {
-    // redirect to Exact oauth login, after login the webhook will be called (= this page)
-    $clientID = CRM_Invoicestoexact_Config::singleton()->getExactClientId();
-    $webHook = "https%3A%2F%2Fwww.bemas.org%2Fnl%2Fcivicrm%2Finvoicestoexact-webhook";
-    $url = "https://start.exactonline.be/api/oauth2/auth?client_id=$clientID&redirect_uri=$webHook&response_type=code&force_login=1";
-    CRM_Utils_System::redirect($url);
+    try {
+      $connection = self::connect();
+    }
+    catch (Exception $e) {
+      // redirect to Exact oauth login, after login the webhook will be called (= this page)
+      $clientID = CRM_Invoicestoexact_Config::singleton()->getExactClientId();
+      $webHook = "https%3A%2F%2Fwww.bemas.org%2Fnl%2Fcivicrm%2Finvoicestoexact-webhook";
+      $url = "https://start.exactonline.be/api/oauth2/auth?client_id=$clientID&redirect_uri=$webHook&response_type=code&force_login=1";
+      CRM_Utils_System::redirect($url);
+    }
   }
 
   /*
