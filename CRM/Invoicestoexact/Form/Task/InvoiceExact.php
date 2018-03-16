@@ -181,7 +181,7 @@ Sans avis de désaffiliation avant le 31/12, l’affiliation d'entreprise à la 
 The corporate membership of BEMAS is renewed automatically for one calendar year and can be terminated annually before Dec 31st. All employees can participate at the member activities and trainings at a special member rate. The member contacts listed below also receive the magazine(s), the yearbook and all communications addressed to our members. The member contacts can be changed at all times by sending an email to office@bemas.org.\n 
 Werknemer(s) die momenteel als lidcontact is (zijn) genoteerd:\n
 Employé(s) actuellement noté(s) en tant que contact(s) affilié(s):\n
-Employee(s) currently designated as member contact(s) in our records:will be automatically renewed and is annually terminable.\n\n";
+Employee(s) currently designated as member contact(s) in our records:\n\n";
 
     // find all employees of the contact where type of member contact is m1 or mc
     $sqlArray = $this->getMemberContactsQuery($contactId);
