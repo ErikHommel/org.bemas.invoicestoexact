@@ -21,6 +21,16 @@ class CRM_Invoicestoexact_Config {
   private $_exactSentErrorCustomField = [];
   private $_exactErrorMessageCustomField = [];
   private $_popsyIdCustomField = [];
+  private $_exactPayerIDCustomField = [];
+
+  private $_eventDetailsCustomGroup = [];
+  private $_eventBeverageCostCustomField = [];
+  private $_eventFoodCostCustomField = [];
+
+  private $_participantDetailsCustomGroup = [];
+  private $_participantExactIDCustomField = [];
+  private $_participantPOCustomfield = [];
+
   private $_organizationDetailsCustomGroup = [];
   private $_individualDetailsCustomGroup = [];
   private $_currentMembershipStatusId = NULL;
@@ -35,7 +45,11 @@ class CRM_Invoicestoexact_Config {
   public function __construct() {
     $this->_itemsExactOptionGroup = $this->createOptionGroupIfNotExists('bemas_items_to_exact', 'BEMAS Exact Lidmaatschap Items');
     $this->_exactCredentialsOptionGroup = $this->createOptionGroupIfNotExists('bemas_exact_credentials', 'BEMAS Exact Credentials');
+
     $this->createContributionDataCustomGroup();
+    $this->createEventDetailsCustomGroup();
+    $this->createParticipantDetailsCustomGroup();
+
     if (!empty($this->_itemsExactOptionGroup['id'])) {
       // add exact items based on membership types
       $this->updateMembershipTypeExactItems();
@@ -219,6 +233,48 @@ class CRM_Invoicestoexact_Config {
     }
   }
 
+  private function createEventDetailsCustomGroup() {
+    $customGroupName = 'Activiteit_status';
+
+    try {
+      $this->_eventDetailsCustomGroup = civicrm_api3('CustomGroup', 'getsingle', [
+        'extends' => 'Event',
+        'name' => $customGroupName,
+      ]);
+    }
+    catch (CiviCRM_API3_Exception $ex) {
+      // Activiteit_status is an existing group  at the time of writing
+      // throw an error if it cannot be found
+      CRM_Core_Error::createError(ts('Could not find custom group for event data in ')
+        . __METHOD__ . ' (extension org.bemas.invoicestoexact');
+    }
+
+    // create custom fields if not exists yet
+    $this->createEventFoodCostCustomField();
+    $this->createEventBeverageCostCustomField();
+  }
+
+  private function createParticipantDetailsCustomGroup() {
+    $customGroupName = 'Facturatiegegevens';
+
+    try {
+      $this->_participantDetailsCustomGroup = civicrm_api3('CustomGroup', 'getsingle', [
+        'extends' => 'Participant',
+        'name' => $customGroupName,
+      ]);
+    }
+    catch (CiviCRM_API3_Exception $ex) {
+      // Facturatiegegevens is an existing group  at the time of writing
+      // throw an error if it cannot be found
+      CRM_Core_Error::createError(ts('Could not find custom group for participant data in ')
+        . __METHOD__ . ' (extension org.bemas.invoicestoexact');
+    }
+
+    // create custom fields if not exists yet
+    $this->createParticipantPOCustomField();
+    $this->createParticipantExactIDCustomField();
+  }
+
   /**
    * Method to create custom group for contribution data if not exist yet
    */
@@ -252,6 +308,142 @@ class CRM_Invoicestoexact_Config {
     $this->createExactOrderNumberCustomField();
     $this->createExactSentErrorCustomField();
     $this->createExactErrorMessageCustomField();
+  }
+
+  private function createEventFoodCostCustomField() {
+    $customFieldName = 'bemas_event_food_cost';
+
+    try {
+      $this->_eventFoodCostCustomField = civicrm_api3('CustomField', 'getsingle', [
+        'name' => $customFieldName,
+        'column_name' => $customFieldName,
+        'custom_group_id' => $this->_eventDetailsCustomGroup['id'],
+      ]);
+    }
+    catch (CiviCRM_API3_Exception $ex) {
+      try {
+        $createdCustomField = civicrm_api3('CustomField', 'create', [
+          'custom_group_id' => $this->_eventDetailsCustomGroup['id'],
+          'name' => $customFieldName,
+          'column_name' => $customFieldName,
+          'label' => 'Catering - eten',
+          'data_type' => 'Money',
+          'html_type' => 'Text',
+          'default_value' => '48',
+          'is_search_range' => '0',
+          'is_active' => 1,
+          'is_searchable' => 1,
+          'is_view' => 0,
+          'weight' => 10,
+        ]);
+        $this->_eventFoodCostCustomField = $createdCustomField['values'][$createdCustomField['id']];
+      }
+      catch (CiviCRM_API3_Exception $ex) {
+        CRM_Core_Error::createError(ts('Could not find or create custom field for event food cost in ')
+          . __METHOD__ . ' (extension org.bemas.invoicestoexact');
+      }
+    }
+  }
+
+  private function createEventBeverageCostCustomField() {
+    $customFieldName = 'bemas_event_beverage_cost';
+
+    try {
+      $this->_eventBeverageCostCustomField = civicrm_api3('CustomField', 'getsingle', [
+        'name' => $customFieldName,
+        'column_name' => $customFieldName,
+        'custom_group_id' => $this->_eventDetailsCustomGroup['id'],
+      ]);
+    }
+    catch (CiviCRM_API3_Exception $ex) {
+      try {
+        $createdCustomField = civicrm_api3('CustomField', 'create', [
+          'custom_group_id' => $this->_eventDetailsCustomGroup['id'],
+          'name' => $customFieldName,
+          'column_name' => $customFieldName,
+          'label' => 'Catering - drank',
+          'data_type' => 'Money',
+          'html_type' => 'Text',
+          'default_value' => '12',
+          'is_search_range' => '0',
+          'is_active' => 1,
+          'is_searchable' => 1,
+          'is_view' => 0,
+          'weight' => 11,
+        ]);
+        $this->_eventBeverageCostCustomField = $createdCustomField['values'][$createdCustomField['id']];
+      }
+      catch (CiviCRM_API3_Exception $ex) {
+        CRM_Core_Error::createError(ts('Could not find or create custom field for beverage food cost in ')
+          . __METHOD__ . ' (extension org.bemas.invoicestoexact');
+      }
+    }
+  }
+
+  private function createParticipantExactIDCustomField() {
+    $customFieldName = 'bemas_participant_exact_id';
+
+    try {
+      $this->_participantExactIDCustomField = civicrm_api3('CustomField', 'getsingle', [
+        'name' => $customFieldName,
+        'column_name' => $customFieldName,
+        'custom_group_id' => $this->_participantDetailsCustomGroup['id'],
+      ]);
+    }
+    catch (CiviCRM_API3_Exception $ex) {
+      try {
+        $createdCustomField = civicrm_api3('CustomField', 'create', [
+          'custom_group_id' => $this->_participantDetailsCustomGroup['id'],
+          'name' => $customFieldName,
+          'column_name' => $customFieldName,
+          'label' => 'Exact Online ID betaler (indien anders dan werkgever)',
+          'data_type' => 'Int',
+          'html_type' => 'Text',
+          'is_search_range' => '0',
+          'is_active' => 1,
+          'is_searchable' => 1,
+          'is_view' => 0,
+          'weight' => 10,
+        ]);
+        $this->_participantExactIDCustomField = $createdCustomField['values'][$createdCustomField['id']];
+      }
+      catch (CiviCRM_API3_Exception $ex) {
+        CRM_Core_Error::createError(ts('Could not find or create custom field for participant exact id in ')
+          . __METHOD__ . ' (extension org.bemas.invoicestoexact');
+      }
+    }
+  }
+
+  private function createParticipantPOCustomField() {
+    $customFieldName = 'bemas_exact_payer_id';
+    try {
+      $this->_participantPOCustomfield = civicrm_api3('CustomField', 'getsingle', [
+        'name' => $customFieldName,
+        'column_name' => $customFieldName,
+        'custom_group_id' => $this->_participantDetailsCustomGroup['id'],
+      ]);
+    }
+    catch (CiviCRM_API3_Exception $ex) {
+      try {
+        $createdCustomField = civicrm_api3('CustomField', 'create', [
+          'custom_group_id' => $this->_participantDetailsCustomGroup['id'],
+          'name' => $customFieldName,
+          'column_name' => $customFieldName,
+          'label' => 'PO-nummer',
+          'data_type' => 'String',
+          'html_type' => 'Text',
+          'is_active' => 1,
+          'is_searchable' => 1,
+          'is_view' => 0,
+          'weight' => 10,
+        ]);
+        $this->_participantPOCustomfield = $createdCustomField['values'][$createdCustomField['id']];
+      }
+      catch (CiviCRM_API3_Exception $ex) {
+        CRM_Core_Error::createError(ts('Could not find or create custom field for po number in ')
+          . __METHOD__ . ' (extension org.bemas.invoicestoexact');
+      }
+    }
   }
 
   /**
@@ -351,6 +543,38 @@ class CRM_Invoicestoexact_Config {
       }
       catch (CiviCRM_API3_Exception $ex) {
         CRM_Core_Error::createError(ts('Could not find or create custom field for exact error message in ')
+          . __METHOD__ . ' (extension org.bemas.invoicestoexact');
+      }
+    }
+  }
+
+  private function createExactPayerIDCustomField() {
+    $customFieldName = 'bemas_exact_payer_id';
+    try {
+      $this->_exactOrderNumberCustomField = civicrm_api3('CustomField', 'getsingle', [
+        'name' => $customFieldName,
+        'column_name' => $customFieldName,
+        'custom_group_id' => $this->_contributionDataCustomGroup['id'],
+      ]);
+    }
+    catch (CiviCRM_API3_Exception $ex) {
+      try {
+        $createdCustomField = civicrm_api3('CustomField', 'create', [
+          'custom_group_id' => $this->_contributionDataCustomGroup['id'],
+          'name' => $customFieldName,
+          'column_name' => $customFieldName,
+          'label' => 'Exact ID betaler',
+          'data_type' => 'String',
+          'html_type' => 'Text',
+          'is_active' => 1,
+          'is_searchable' => 1,
+          'is_view' => 1,
+          'weight' => 10,
+        ]);
+        $this->_exactPayerIDCustomField = $createdCustomField['values'][$createdCustomField['id']];
+      }
+      catch (CiviCRM_API3_Exception $ex) {
+        CRM_Core_Error::createError(ts('Could not find or create custom field for exact id payer in ')
           . __METHOD__ . ' (extension org.bemas.invoicestoexact');
       }
     }
@@ -494,6 +718,42 @@ class CRM_Invoicestoexact_Config {
     }
   }
 
+  public function getParticipantExactIdCustomField($key = 'id') {
+    if (!empty($key) && isset($this->_participantExactIDCustomField[$key])) {
+      return $this->_participantExactIDCustomField[$key];
+    }
+    else {
+      return $this->_participantExactIDCustomField;
+    }
+  }
+
+  public function getParticipantPOCustomField($key = 'id') {
+    if (!empty($key) && isset($this->_participantPOCustomfield[$key])) {
+      return $this->_participantPOCustomfield[$key];
+    }
+    else {
+      return $this->_participantPOCustomfield;
+    }
+  }
+
+  public function getEventFoodCostCustomField($key = 'id') {
+    if (!empty($key) && isset($this->_eventFoodCostCustomField[$key])) {
+      return $this->_eventFoodCostCustomField[$key];
+    }
+    else {
+      return $this->_eventFoodCostCustomField;
+    }
+  }
+
+  public function getEventBeverageCostCustomField($key = 'id') {
+    if (!empty($key) && isset($this->_eventBeverageCostCustomField[$key])) {
+      return $this->_eventBeverageCostCustomField[$key];
+    }
+    else {
+      return $this->_eventBeverageCostCustomField;
+    }
+  }
+
   /**
    * Getter for exact order number custom field
    *
@@ -581,6 +841,25 @@ class CRM_Invoicestoexact_Config {
     }
     else {
       return $this->_organizationDetailsCustomGroup;
+    }
+  }
+
+  public function getEventDetailsCustomGroup($key = 'id') {
+    if (!empty($key) && isset($this->_eventDetailsCustomGroup[$key])) {
+      return $this->_eventDetailsCustomGroup[$key];
+    }
+    else {
+      return $this->_eventDetailsCustomGroup;
+    }
+  }
+
+
+  public function getParticipantDetailsCustomGroup($key = 'id') {
+    if (!empty($key) && isset($this->_participantDetailsCustomGroup[$key])) {
+      return $this->_participantDetailsCustomGroup[$key];
+    }
+    else {
+      return $this->_participantDetailsCustomGroup;
     }
   }
 

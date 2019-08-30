@@ -8,31 +8,53 @@
  */
 
 class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Task {
-  private $_data = array();
-  private $_correctElements = array();
-  private $_errorElements = array();
+  private $_data = [];
+  private $_correctElements = [];
+  private $_errorElements = [];
+
+  // TODO NIEUW: TE CHECKEN/HERNOEMEN!!!
+  private $_orgExactIdColumn = '';
+  private $_orderNumberColumn = '';
+  private $_orgDetTableName = '';
+  private $_partDetTableName = '';
+  private $_partExactIdColumn = '';
+  private $_partPOColumn = '';
+  private $_eventDetTableName = '';
+  private $_eventFoodCostColumn = '';
+  private $_eventBeverageCostColumn = '';
+  private $_contDataTableName = '';
+  private $_invoiceOptionGroupId = '';
+
+  public function __construct() {
+    // get custom fields
+    $this->_orgExactIdColumn = CRM_Invoicestoexact_Config::singleton()->getPopsyIdCustomField('column_name');
+    $this->_orderNumberColumn = CRM_Invoicestoexact_Config::singleton()->getExactOrderNumberCustomField('column_name');
+    $this->_orgDetTableName = CRM_Invoicestoexact_Config::singleton()->getOrganizationDetailsCustomGroup('table_name');
+    $this->_contDataTableName = CRM_Invoicestoexact_Config::singleton()->getContributionDataCustomGroup('table_name');
+    $this->_invoiceOptionGroupId = CRM_Invoicestoexact_Config::singleton()->getItemsExactOptionGroup('id');
+    $this->_partDetTableName = CRM_Invoicestoexact_Config::singleton()->getParticipantDetailsCustomGroup('table_name');
+    $this->_partExactIdColumn = CRM_Invoicestoexact_Config::singleton()->getParticipantExactIdCustomField('column_name');
+    $this->_partPOColumn = CRM_Invoicestoexact_Config::singleton()->getParticipantPOCustomField('column_name');
+    $this->_eventDetTableName = CRM_Invoicestoexact_Config::singleton()->getEventDetailsCustomGroup('table_name');
+    $this->_eventFoodCostColumn = CRM_Invoicestoexact_Config::singleton()->getEventFoodCostCustomField('column_name');
+    $this->_eventBeverageCostColumn = CRM_Invoicestoexact_Config::singleton()->getEventBeverageCostCustomField('column_name');
+    parent::__construct();
+  }
 
   /**
    * Method to build the form
    */
   public function buildQuickForm() {
+    // preprocess all selected contributions and store in this->_correctElements and _errorElements
     $this->buildData();
-    foreach ($this->_contributionIds as $contributionId) {
-      if ($this->canInvoiceBeSent($contributionId)) {
-        $this->buildCorrectElement($contributionId);
-      }
-      else {
-        $this->buildErrorElement($contributionId);
-        if (($key = array_search($contributionId, $this->_contributionIds)) !== FALSE) {
-          unset($this->_contributionIds[$key]);
-        }
-      }
-    }
+
     $this->assign('correctElements', $this->_correctElements);
     $this->assign('errorElements', $this->_errorElements);
+
     $this->addButtons([
       ['type' => 'next', 'name' => ts('Confirm'), 'isDefault' => TRUE],
-      ['type' => 'cancel', 'name' => ts('Cancel')]]);
+      ['type' => 'cancel', 'name' => ts('Cancel')]
+    ]);
   }
 
   /**
@@ -66,6 +88,9 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
     foreach ($this->_errorElements as $errorId => $error) {
       if ($this->_data[$errorId]['entity_table'] == 'civicrm_membership') {
         $entityLine = 'Lidmaatschap';
+      }
+      else if ($this->_data[$errorId]['entity_table'] == 'civicrm_participant') {
+        $entityLine = '- deelname BEMAS evenement';
       }
       else {
         $entityLine = '';
@@ -101,7 +126,7 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
    */
   private function canInvoiceBeSent($contributionId) {
     if (!empty($this->_data[$contributionId]['exact_order_number'])) {
-      $this->_data[$contributionId]['error_message'] = ts('Bijdrage heeft al een Exact ordernummer en de factuur is al verstuurd naar Exact.');
+      $this->_data[$contributionId]['error_message'] = 'Bijdrage heeft al een Exact ordernummer en de factuur is al verstuurd naar Exact.';
       return FALSE;
     }
     if (empty($this->_data[$contributionId]['contact_code'])) {
@@ -119,47 +144,162 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
    * Method to build the relevant data for all potential invoices
    */
   private function buildData() {
-    $queryParams = [];
-    $queryIndexes = [];
-    $index = 0;
+    $canInvoiceBeSent = FALSE;
 
-    foreach ($this->_contributionIds as $contributionId) {
-      $index++;
-      $queryParams[$index] = [$contributionId, 'Integer'];
-      $queryIndexes[] = '%' . $index;
-    }
-    if (!empty($queryParams)) {
-      $contactCodeColumn = CRM_Invoicestoexact_Config::singleton()->getPopsyIdCustomField('column_name');
-      $orderNumberColumn = CRM_Invoicestoexact_Config::singleton()->getExactOrderNumberCustomField('column_name');
-      $orgDetTableName = CRM_Invoicestoexact_Config::singleton()->getOrganizationDetailsCustomGroup('table_name');
-      $contDataTableName = CRM_Invoicestoexact_Config::singleton()->getContributionDataCustomGroup('table_name');
-      $invoiceOptionGroupId = CRM_Invoicestoexact_Config::singleton()->getItemsExactOptionGroup('id');
-      $query = 'SELECT a.id AS contribution_id, a.contact_id, b.display_name, c.entity_table, c.label AS invoice_description, 
-      c.unit_price, d.' . $contactCodeColumn . ', e.' . $orderNumberColumn . ', f.value AS item_code 
-      FROM civicrm_contribution a JOIN civicrm_contact b ON a.contact_id = b.id
-      LEFT JOIN civicrm_line_item c ON a.id = c.contribution_id
-      LEFT JOIN ' . $orgDetTableName . ' d ON a.contact_id = d.entity_id
-      LEFT JOIN ' . $contDataTableName . ' e ON a.id = e.entity_id
-      LEFT JOIN civicrm_option_value f ON c.label = f.label AND f.option_group_id = ' . $invoiceOptionGroupId .
-      ' WHERE a.id IN(' . implode(', ', $queryIndexes) . ')';
-
-      // invoice description
-      $invoiceDescription = "Lidmaatschap/Cotisation/Membership BEMAS";
-
-      $dao = CRM_Core_DAO::executeQuery($query, $queryParams);
+    if (count($this->_contributionIds) > 0) {
+      // get all selected contributions
+      $sql = "
+        SELECT
+          c.id contribution_id
+          , ft.name financial_type
+        FROM 
+          civicrm_contribution c 
+        INNER JOIN          
+          civicrm_financial_type ft on c.financial_type_id = ft.id
+        WHERE 
+          c.id IN (" . implode(', ', $this->_contributionIds) . ')';
+      $dao = CRM_Core_DAO::executeQuery($sql);
       while ($dao->fetch()) {
-        $this->_data[$dao->contribution_id] = [
-          'contact_id' => $dao->contact_id,
-          'display_name' => $dao->display_name,
-          'entity_table' => $dao->entity_table,
-          'invoice_description' => $invoiceDescription,
-          'unit_price' => $dao->unit_price,
-          'contact_code' => $dao->$contactCodeColumn,
-          'exact_order_number' => $dao->$orderNumberColumn,
-          'item_code' => $dao->item_code,
-          'line_notes' => $this->generateLineNotes($dao->contact_id),
-        ];
+        // process the contribution based on its financial type
+        if ($dao->financial_type == 'Member Dues') {
+          $canInvoiceBeSent = $this->buildDataMembership($dao->contribution_id);
+        }
+        elseif ($dao->financial_type == 'Event Fee') {
+          $canInvoiceBeSent = $this->buildDataParticipant($dao->contribution_id);
+        }
+        else {
+          $this->_data[$dao->contribution_id]['error_message'] = 'Het financieel type van de bijdrage (' . $dao->financial_type . ') wordt nog niet ondersteund.';
+          $canInvoiceBeSent = FALSE;
+        }
+
+        // store the contrib in the "Correct" or "Error" array
+        if ($canInvoiceBeSent) {
+          // OK, the contrib is complete
+          $this->buildCorrectElement($dao->contribution_id);
+        }
+        else {
+          // Nope, the contrib is not ready for invoicing
+          $this->buildErrorElement($dao->contribution_id);
+          if (($key = array_search($dao->contribution_id, $this->_contributionIds)) !== FALSE) {
+            unset($this->_contributionIds[$key]);
+          }
+        }
       }
+    }
+  }
+
+  private function buildDataParticipant($contributionID) {
+    $retval = TRUE;
+
+    // get the contribution and the participant-related data
+    $sql = "
+      SELECT
+        c.id contribution_id
+        , contact_a.id contact_id
+        , concat(contact_a.first_name, ' ', contact_a.last_name) participant_name
+        , empl.id employer_id
+        , empl.organization_name employer_name
+        , empl_det.{$this->_orgExactIdColumn} employer_exact_id
+        , part_det.{$this->_partExactIdColumn} participant_exact_id
+        , part_det.{$this->_partPOColumn} participant_po_number
+        , e.title_nl_NL event_title
+        , p.fee_amount event_all_in_price
+        , ifnull(e_det.{$this->_eventFoodCostColumn}, 0) event_food_price
+        , ifnull(e_det.{$this->_eventBeverageCostColumn}, 0) event_beverage_price
+      FROM
+        civicrm_contribution c 
+      INNER JOIN
+        civicrm_contact contact_a on contact_a.id = c.contact_id
+      INNER JOIN
+        civicrm_participant_payment pp on pp.contribution_id = c.id
+      INNER JOIN
+        civicrm_participant p on p.id = pp.participant_id        
+      LEFT OUTER JOIN
+        civicrm_contact empl on empl.id = contact_a.employer_id
+      LEFT OUTER JOIN
+        {$this->_orgDetTableName} empl_det ON empl.id = empl_det.entity_id
+      LEFT OUTER JOIN
+        {$this->_partDetTableName} part_det ON p.id = part_det.entity_id
+      LEFT OUTER JOIN
+        civicrm_event e on e.id = p.event_id
+      LEFT OUTER JOIN
+        {$this->_eventDetTableName} e_det ON e.id = e_det.entity_id        
+      WHERE
+        c.id = $contributionID 
+    ";
+
+    try {
+      $dao = CRM_Core_DAO::executeQuery($sql);
+      if ($dao->fetch()) {
+        // validate the contribution
+        if ($dao->event_all_in_price == 0 || ($dao->event_all_in_price - $dao->event_food_price - $dao->event_beverage_price == 0)) {
+          throw new Exception('Gratis deelname');
+        }
+        elseif ($dao->event_all_in_price - $dao->event_food_price - $dao->event_beverage_price < 0) {
+          throw new Exception( 'Deelnameprijs min de cateringkost is negatief');
+        }
+
+        // get the event code
+        $eventExactCodes = $this->getExactEventAndCateringCodes($dao->event_title);
+// TODO
+      }
+      else {
+        throw new Exception('Bijdrage en aanverwante info niet gevonden');
+      }
+    }
+    catch (Exception $e) {
+      // set error message
+      $this->_data[$contributionID]['error_message'] = $e->getMessage();
+      $retval = FALSE;
+    }
+
+    return $retval;
+  }
+
+  private function buildDataMembership($contributionID) {
+    $sql = "
+      SELECT 
+        a.id AS contribution_id, 
+        a.contact_id, 
+        b.display_name, 
+        c.entity_table, 
+        c.label AS invoice_description, 
+        c.unit_price, 
+        d.{this->_orgExactIdColumn}, 
+        e.$orderNumberColumn, 
+        f.value AS item_code 
+      FROM 
+        civicrm_contribution a 
+      INNER JOIN 
+        civicrm_contact b ON a.contact_id = b.id
+      LEFT JOIN 
+        civicrm_line_item c ON a.id = c.contribution_id
+      LEFT JOIN
+        $orgDetTableName d ON a.contact_id = d.entity_id
+      LEFT JOIN 
+        $contDataTableName e ON a.id = e.entity_id
+      LEFT JOIN 
+        civicrm_option_value f ON c.label = f.label AND f.option_group_id = $invoiceOptionGroupId
+      WHERE 
+        a.id = $contributionID
+    ";
+
+    // invoice description
+    $invoiceDescription = "Lidmaatschap/Cotisation/Membership BEMAS";
+
+    $dao = CRM_Core_DAO::executeQuery($sql);
+    if ($dao->fetch()) {
+      $this->_data[$dao->contribution_id] = [
+        'contact_id' => $dao->contact_id,
+        'display_name' => $dao->display_name,
+        'entity_table' => $dao->entity_table,
+        'invoice_description' => $invoiceDescription,
+        'unit_price' => $dao->unit_price,
+        'contact_code' => $dao->{$this->_orgExactIdColumn},
+        'exact_order_number' => $dao->$orderNumberColumn,
+        'item_code' => $dao->item_code,
+        'line_notes' => $this->generateLineNotes($dao->contact_id),
+      ];
     }
   }
 
@@ -354,6 +494,35 @@ Employee(s) currently designated as member contact(s) in our records:\n\n";
     catch (CiviCRM_API3_Exception $ex) {
       CRM_Core_Error::debug_log_message('Could not set contribution custom value for custom field id '
         . $customFieldId . ' and contribution ' . $contributionId . ' in ' . __METHOD__ . '(extension org.bemas.invoicestoexact)');
+    }
+  }
+
+  private function getExactEventAndCateringCodes($eventTitle) {
+    $returnArr = [];
+
+    // the exact code is stored in the first part of the event title e.g. T180523V -  The Fundamentals of pump repair
+    $eventCode = explode(' - ', $eventTitle);
+    if (count($eventCode) < 2) {
+      throw new Exception( 'Kan de event code niet uit de titel halen: ' . $eventTitle);
+    }
+
+    // store the event code in the return array
+    $returnArr['event_code'] = $eventCode[0];
+
+    // make sure the code starts with TT, TC, T, A
+    $firstTwoLetters = substr($eventCode[0],0, 2);
+    $firstLetter = substr($eventCode[0],0, 1);
+    if ($firstTwoLetters == 'TC' || $firstTwoLetters == 'TT') {
+      $returnArr['catering_food'] = 'CatFood-' . $firstTwoLetters;
+      $returnArr['catering_drinks'] = 'CatDrinks-' . $firstTwoLetters;
+    }
+    elseif ($firstLetter == 'T' || $firstLetter == 'A') {
+      $returnArr['catering_food'] = 'CatFood-' . $firstLetter;
+      $returnArr['catering_drinks'] = 'CatDrinks-' . $firstLetter;
+    }
+    else {
+      // not valid
+      throw new Exception( 'De event code begint niet met TC, TT, T of A: ' . $eventCode[0]);
     }
   }
 

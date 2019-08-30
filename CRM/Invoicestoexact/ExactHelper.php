@@ -24,7 +24,7 @@ class CRM_Invoicestoexact_ExactHelper {
       $customer = $c[0];
 
       // find the product (article)
-      $itemFinder = new Picqer\Financials\Exact\Item($exactOL->exactConnection);
+      $itemFinder = new \Picqer\Financials\Exact\Item($exactOL->exactConnection);
       $i = $itemFinder->filter("Code eq '" . $params['item_code'] . "'");
       if (count($i) !== 1) {
         throw new Exception("artikel niet gevonden");
@@ -35,7 +35,7 @@ class CRM_Invoicestoexact_ExactHelper {
       $salesInvoice = new \Picqer\Financials\Exact\SalesInvoice($exactOL->exactConnection);
       $salesInvoice->InvoiceTo = $customer->ID;
       $salesInvoice->OrderedBy = $customer->ID;
-      $salesInvoice->Description = $params['invoice_description'];// add an invoice line
+      $salesInvoice->Description = $params['invoice_description'];
 
       // create the invoice line
       $salesInvoiceLine = new \Picqer\Financials\Exact\SalesInvoiceLine($exactOL->exactConnection);

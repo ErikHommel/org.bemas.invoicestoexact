@@ -128,10 +128,12 @@ function invoicestoexact_civicrm_alterSettingsFolders(&$metaDataFolders = NULL) 
  * Implements hook_civicrm_searchTasks().
  */
 function invoicestoexact_civicrm_searchTasks($objectType, &$tasks) {
-  $tasks[] = array(
-    'title' => 'Send Invoice(s) to Exact',
-    'class' => 'CRM_Invoicestoexact_Form_Task_InvoiceExact',
-  );
+  if ($objectType == 'contribution') {
+    $tasks[] = [
+      'title' => 'Send Invoice(s) to Exact',
+      'class' => 'CRM_Invoicestoexact_Form_Task_InvoiceExact',
+    ];
+  }
 }
 
 /**
