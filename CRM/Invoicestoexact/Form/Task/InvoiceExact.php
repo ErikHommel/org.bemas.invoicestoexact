@@ -202,7 +202,7 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         , empl_det.{$this->_orgExactIdColumn} employer_exact_id
         , part_det.{$this->_partExactIdColumn} participant_exact_id
         , part_det.{$this->_partPOColumn} participant_po_number
-        , e.title_nl_NL event_title
+        , e.title event_title
         , p.fee_amount event_all_in_price
         , ifnull(e_det.{$this->_eventFoodCostColumn}, 0) event_food_price
         , ifnull(e_det.{$this->_eventBeverageCostColumn}, 0) event_beverage_price
@@ -241,7 +241,9 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
 
         // get the event code
         $eventExactCodes = $this->getExactEventAndCateringCodes($dao->event_title);
-// TODO
+
+        // add the line items
+        $this->addOrReplaceLineItems($contributionID, $eventExactCodes, $dao->event_all_in_price, $dao->event_food_price, $dao->event_beverage_price);
       }
       else {
         throw new Exception('Bijdrage en aanverwante info niet gevonden');
@@ -254,6 +256,80 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
     }
 
     return $retval;
+  }
+
+  private function addOrReplaceLineItems($contributionID, $eventExactCodes, $event_all_in_price, $event_food_price, $event_beverage_price) {
+    $sql = "select * from civicrm_line_item where contribution_id = $contributionID order by id";
+    $dao = CRM_Core_DAO::executeQuery($sql);
+
+    $i = 0;
+    while ($dao->fetch()) {
+      $i++;
+
+      if ($i == 1) {
+        // the first line item is the event subscription
+        $sqlUpdate = "update civicrm_line_item set label = %2, qty = 1, unit_price = %3, line_total = %3 where id = %1";
+        $sqlUpdateParams = [
+          1 => [$dao->id, 'Integer'],
+          2 => [$eventExactCodes['event_code'], 'String'],
+          3 => [$event_all_in_price - $event_food_price - $event_beverage_price, 'Money'],
+        ];
+        CRM_Core_DAO::executeQuery($sqlUpdate, $sqlUpdateParams);
+      }
+      elseif ($i == 2) {
+        // the second line item is drinks
+        $sqlUpdate = "update civicrm_line_item set label = %2, qty = 1, unit_price = %3, line_total = %3 where id = %1";
+        $sqlUpdateParams = [
+          1 => [$dao->id, 'Integer'],
+          2 => [$eventExactCodes['catering_drinks'], 'String'],
+          3 => [$event_beverage_price, 'Money'],
+        ];
+        CRM_Core_DAO::executeQuery($sqlUpdate, $sqlUpdateParams);
+      }
+      elseif ($i == 3) {
+        // the third line item is food
+        $sqlUpdate = "update civicrm_line_item set label = %2, qty = 1, unit_price = %3, line_total = %3 where id = %1";
+        $sqlUpdateParams = [
+          1 => [$dao->id, 'Integer'],
+          2 => [$eventExactCodes['catering_food'], 'String'],
+          3 => [$event_food_price, 'Money'],
+        ];
+        CRM_Core_DAO::executeQuery($sqlUpdate, $sqlUpdateParams);
+      }
+    }
+
+    // if don't have all 3...
+    if ($i == 0) {
+      throw new Exception('Bijdrage ' . $contributionID . ' heeft geen line items');
+    }
+    if ($i == 1) {
+      // add drinks
+      $params = [
+        'entity_id' => $contributionID,
+        'entity_table' => 'civicrm_participant',
+        'contribution_id' => $contributionID,
+        'financial_type_id' => 4, // event fee
+        'label' => $eventExactCodes['catering_drinks'],
+        'unit_price' => $event_beverage_price,
+        'qty' => 1,
+        'line_total' => $event_beverage_price,
+      ];
+      civicrm_api3('LineItem', 'create', $params);
+    }
+    if ($i == 1 || $i == 2) {
+      // add food
+      $params = [
+        'entity_id' => $contributionID,
+        'entity_table' => 'civicrm_participant',
+        'contribution_id' => $contributionID,
+        'financial_type_id' => 4, // event fee
+        'label' => $eventExactCodes['catering_food'],
+        'unit_price' => $event_food_price,
+        'qty' => 1,
+        'line_total' => $event_food_price,
+      ];
+      civicrm_api3('LineItem', 'create', $params);
+    }
   }
 
   private function buildDataMembership($contributionID) {
@@ -524,6 +600,8 @@ Employee(s) currently designated as member contact(s) in our records:\n\n";
       // not valid
       throw new Exception( 'De event code begint niet met TC, TT, T of A: ' . $eventCode[0]);
     }
+
+    return $returnArr;
   }
 
 }
