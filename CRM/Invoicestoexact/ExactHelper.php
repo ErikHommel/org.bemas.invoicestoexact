@@ -61,22 +61,25 @@ class CRM_Invoicestoexact_ExactHelper {
         $salesInvoiceLines = [];
         $line = -1;
         while ($daoContribLines->fetch()) {
-          $line++;
+          // extra check on unit price in case drinks or food = 0
+          if ($daoContribLines->unit_price > 0) {
+            $line++;
 
-          // find the product (article)
-          $itemFinder = new \Picqer\Financials\Exact\Item($exactOL->exactConnection);
-          $i = $itemFinder->filter("Code eq '" . $daoContribLines->label . "'");
-          if (count($i) !== 1) {
-            throw new Exception('artikel ' . $daoContribLines->label . ' niet gevonden');
+            // find the product (article)
+            $itemFinder = new \Picqer\Financials\Exact\Item($exactOL->exactConnection);
+            $i = $itemFinder->filter("Code eq '" . $daoContribLines->label . "'");
+            if (count($i) !== 1) {
+              throw new Exception('artikel ' . $daoContribLines->label . ' niet gevonden');
+            }
+            $item = $i[0];
+
+            // create the invoice line
+            $salesInvoiceLine = new \Picqer\Financials\Exact\SalesInvoiceLine($exactOL->exactConnection);
+            $salesInvoiceLine->Item = $item->ID;
+            $salesInvoiceLine->Quantity = $daoContribLines->qty;
+            $salesInvoiceLine->UnitPrice = $daoContribLines->unit_price;
+            $salesInvoiceLines[] = $salesInvoiceLine;
           }
-          $item = $i[0];
-
-          // create the invoice line
-          $salesInvoiceLine = new \Picqer\Financials\Exact\SalesInvoiceLine($exactOL->exactConnection);
-          $salesInvoiceLine->Item = $item->ID;
-          $salesInvoiceLine->Quantity = $daoContribLines->qty;
-          $salesInvoiceLine->UnitPrice = $daoContribLines->unit_price;
-          $salesInvoiceLines[] = $salesInvoiceLine;
         }
 
         // add comment to the last line
