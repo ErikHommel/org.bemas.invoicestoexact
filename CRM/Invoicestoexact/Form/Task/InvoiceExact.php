@@ -249,8 +249,11 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         if ($dao->event_all_in_price == 0 || ($dao->event_all_in_price - $dao->event_food_price - $dao->event_beverage_price == 0)) {
           throw new Exception('Gratis deelname');
         }
-        elseif ($dao->event_all_in_price - $dao->event_food_price - $dao->event_beverage_price < 0) {
+        if ($dao->event_all_in_price - $dao->event_food_price - $dao->event_beverage_price < 0) {
           throw new Exception( 'Deelnameprijs min de cateringkost is negatief');
+        }
+        if (empty($dao->participant_exact_id) || empty($dao->employer_exact_id)) {
+          throw new Exception( 'Geen Exact klant ID ingevuld bij werkgever of deelname');
         }
 
         // get the event code and add the line items
