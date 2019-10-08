@@ -34,6 +34,7 @@ class CRM_Invoicestoexact_Config {
   private $_contributionExactIDCustomField = [];
   private $_contributionPOCustomfield = [];
   private $_contributionCommentCustomfield = [];
+  private $_contributionDescriptionCustomfield = [];
 
   private $_organizationDetailsCustomGroup = [];
   private $_individualDetailsCustomGroup = [];
@@ -329,6 +330,7 @@ class CRM_Invoicestoexact_Config {
     $this->createContributionExactIDCustomField();
     $this->createContributionPOCustomfield();
     $this->createContributionCommentCustomfield();
+    $this->createContributionDescriptionCustomfield();
   }
 
   private function createEventFoodCostCustomField() {
@@ -558,6 +560,37 @@ class CRM_Invoicestoexact_Config {
       }
       catch (CiviCRM_API3_Exception $ex) {
         CRM_Core_Error::createError(ts('Could not find or create custom field for comment in ')
+          . __METHOD__ . ' (extension org.bemas.invoicestoexact');
+      }
+    }
+  }
+
+  private function createContributionDescriptionCustomfield() {
+    $customFieldName = 'bemas_contrib_description';
+    try {
+      $this->_contributionDescriptionCustomfield = civicrm_api3('CustomField', 'getsingle', [
+        'name' => $customFieldName,
+        'column_name' => $customFieldName,
+        'custom_group_id' => $this->_contributionDataCustomGroup['id'],
+      ]);
+    }
+    catch (CiviCRM_API3_Exception $ex) {
+      try {
+        $createdCustomField = civicrm_api3('CustomField', 'create', [
+          'custom_group_id' => $this->_contributionDataCustomGroup['id'],
+          'name' => $customFieldName,
+          'column_name' => $customFieldName,
+          'label' => 'Omschrijving factuur',
+          'data_type' => 'String',
+          'html_type' => 'Text',
+          'is_active' => 1,
+          'is_searchable' => 1,
+          'is_view' => 0,
+        ]);
+        $this->_contributionDescriptionCustomfield = $createdCustomField['values'][$createdCustomField['id']];
+      }
+      catch (CiviCRM_API3_Exception $ex) {
+        CRM_Core_Error::createError(ts('Could not find or create custom field for description in ')
           . __METHOD__ . ' (extension org.bemas.invoicestoexact');
       }
     }
@@ -1010,6 +1043,15 @@ class CRM_Invoicestoexact_Config {
     }
     else {
       return $this->_contributionPOCustomfield;
+    }
+  }
+
+  public function getContributionDescriptionCustomfield($key = 'id') {
+    if (!empty($key) && isset($this->_contributionDescriptionCustomfield[$key])) {
+      return $this->_contributionDescriptionCustomfield[$key];
+    }
+    else {
+      return $this->_contributionDescriptionCustomfield;
     }
   }
 

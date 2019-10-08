@@ -268,7 +268,10 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         $this->saveContributionCustomData($f, $dao->participant_po_number, $contributionID);
 
         $f = CRM_Invoicestoexact_Config::singleton()->getContributionCommentCustomfield('id');
-        $this->saveContributionCustomData($f, 'Participant:<br>' . $dao->participant_name . ' (' . $dao->employer_name . ')', $contributionID);
+        $this->saveContributionCustomData($f, 'Participant: ' . $dao->participant_name . ' (' . $dao->employer_name . ')', $contributionID);
+
+        $f = CRM_Invoicestoexact_Config::singleton()->getContributionDescriptionCustomfield('id');
+        $this->saveContributionCustomData($f, 'BEMAS event ' . $eventExactCodes['event_code'], $contributionID);
 
         // store in array of "good" contributions
         $this->_data[$dao->contribution_id] = [

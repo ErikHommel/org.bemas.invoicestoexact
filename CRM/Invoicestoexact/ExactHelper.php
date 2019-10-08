@@ -15,6 +15,7 @@ class CRM_Invoicestoexact_ExactHelper {
     // get the contribution details
     $contribDetails = CRM_Invoicestoexact_Config::singleton()->getContributionDataCustomGroup('table_name');
     $exactContactID = CRM_Invoicestoexact_Config::singleton()->getContributionExactIDCustomField('column_name');
+    $invoiceDescription = CRM_Invoicestoexact_Config::singleton()->getContributionDescriptionCustomField('column_name');
     $poNumber = CRM_Invoicestoexact_Config::singleton()->getContributionPOCustomfield('column_name');
     $comment = CRM_Invoicestoexact_Config::singleton()->getContributionCommentCustomfield('column_name');
 
@@ -29,6 +30,7 @@ class CRM_Invoicestoexact_ExactHelper {
           cd.$poNumber po
           , cd.$exactContactID exact_id
           , cd.$comment comment
+          , cd.$invoiceDescription description
           , ft.name financial_type
         FROM
           civicrm_contribution c
@@ -53,7 +55,10 @@ class CRM_Invoicestoexact_ExactHelper {
         $salesInvoice = new \Picqer\Financials\Exact\SalesInvoice($exactOL->exactConnection);
         $salesInvoice->InvoiceTo = $customer->ID;
         $salesInvoice->OrderedBy = $customer->ID;
-        $salesInvoice->Description = $daoContrib->po;
+        $salesInvoice->Description = $daoContrib->description;
+        if ($daoContrib->po) {
+          $salesInvoice->YourRef = $daoContrib->po;
+        }
 
         // add the invoice lines
         $sql = "select * from civicrm_line_item where contribution_id = $contributionID";
