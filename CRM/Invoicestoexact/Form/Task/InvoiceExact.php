@@ -202,8 +202,11 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         , empl_det.{$this->_orgExactIdColumn} employer_exact_id
         , part_det.{$this->_partExactIdColumn} participant_exact_id
         , part_det.{$this->_partPOColumn} participant_po_number
+        , c_det.{$this->_orderNumberColumn} order_number
         , e.title event_title
         , p.fee_amount event_all_in_price
+        , p.role_id
+        , p.status_id
         , ifnull(e_det.{$this->_eventFoodCostColumn}, 0) event_food_price
         , ifnull(e_det.{$this->_eventBeverageCostColumn}, 0) event_beverage_price
       FROM
@@ -224,6 +227,8 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         civicrm_event e on e.id = p.event_id
       LEFT OUTER JOIN
         {$this->_eventDetTableName} e_det ON e.id = e_det.entity_id        
+      LEFT OUTER JOIN
+        {$this->_contDataTableName} c_det ON c.id = c_det.entity_id
       WHERE
         c.id = $contributionID 
     ";
@@ -232,6 +237,15 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
       $dao = CRM_Core_DAO::executeQuery($sql);
       if ($dao->fetch()) {
         // validate the contribution
+        if ($dao->role_id != 1) {
+          throw new Exception('Rol <> deelnemer');
+        }
+        if ($dao->status_id != 1 && $dao->status_id != 2) {
+          throw new Exception('Status <> ingeschreven of attended');
+        }
+        if ($dao->order_number) {
+          throw new Exception('Reeds gefactureerd');
+        }
         if ($dao->event_all_in_price == 0 || ($dao->event_all_in_price - $dao->event_food_price - $dao->event_beverage_price == 0)) {
           throw new Exception('Gratis deelname');
         }
@@ -239,11 +253,29 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
           throw new Exception( 'Deelnameprijs min de cateringkost is negatief');
         }
 
-        // get the event code
+        // get the event code and add the line items
         $eventExactCodes = $this->getExactEventAndCateringCodes($dao->event_title);
-
-        // add the line items
         $this->addOrReplaceLineItems($contributionID, $eventExactCodes, $dao->event_all_in_price, $dao->event_food_price, $dao->event_beverage_price);
+
+        // add the PO, exact id of the payer, and invoice description
+        $f = CRM_Invoicestoexact_Config::singleton()->getContributionExactIDCustomField('id');
+        $this->saveContributionCustomData($f,$dao->participant_exact_id ? $dao->participant_exact_id : $dao->employer_exact_id, $contributionID);
+
+        $f = CRM_Invoicestoexact_Config::singleton()->getContributionPOCustomfield('id');
+        $this->saveContributionCustomData($f, $dao->participant_po_number, $contributionID);
+
+        $f = CRM_Invoicestoexact_Config::singleton()->getContributionCommentCustomfield('id');
+        $this->saveContributionCustomData($f, 'Participant:<br>' . $dao->participant_name . ' (' . $dao->employer_name . ')', $contributionID);
+
+        // store in array of "good" contributions
+        $this->_data[$dao->contribution_id] = [
+          'display_name' => $dao->participant_name . ' (' . $dao->employer_name . ')',
+          'entity_table' => 'civicrm_participant',
+          'invoice_description' => $dao->participant_po_number,
+          'unit_price' => $dao->event_all_in_price . ', waarvan € ' . $dao->event_food_price . ' eten en € '.  $dao->event_beverage_price . ' drank',
+          'contact_code' => $dao->participant_exact_id ? $dao->participant_exact_id : $dao->employer_exact_id,
+          'item_code' => $eventExactCodes['event_code'],
+        ];
       }
       else {
         throw new Exception('Bijdrage en aanverwante info niet gevonden');
@@ -251,7 +283,16 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
     }
     catch (Exception $e) {
       // set error message
-      $this->_data[$contributionID]['error_message'] = $e->getMessage();
+      $this->_data[$dao->contribution_id] = [
+        'display_name' => $dao->participant_name . ' (' . $dao->employer_name . ')',
+        'entity_table' => 'civicrm_participant',
+        'invoice_description' => $dao->participant_po_number,
+        'unit_price' => $dao->event_all_in_price . ', waarvan € ' . $dao->event_food_price . ' eten en € '.  $dao->event_beverage_price . ' drank',
+        'contact_code' => $dao->participant_exact_id ? $dao->participant_exact_id : $dao->employer_exact_id,
+        'item_code' => $eventExactCodes['event_code'],
+        'error_message' => $e->getMessage(),
+      ];
+
       $retval = FALSE;
     }
 
@@ -333,6 +374,7 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
   }
 
   private function buildDataMembership($contributionID) {
+    // TODO: aanpassen aan nieuwe situatie
     $sql = "
       SELECT 
         a.id AS contribution_id, 
@@ -450,106 +492,38 @@ Employee(s) currently designated as member contact(s) in our records:\n\n";
     return $result;
   }
 
-  /**
-   * Overridden method to process form submission
-   */
   public function postProcess() {
-    $countSucceed = 0;
-    $countFailed = 0;
+    // the queue name is based on the logged in user
+    $queueName = 'synccontribution_' . CRM_Core_Session::getLoggedInContactID();
+
+    // create the queue
+    $queue = CRM_Queue_Service::singleton()->create([
+      'type' => 'Sql',
+      'name' => $queueName,
+      'reset' => TRUE, // flush queue upon creation
+    ]);
+
+    // add all id's to the queue
     foreach ($this->_contributionIds as $contributionId) {
-      $data = array(
-        'contact_code' => $this->_data[$contributionId]['contact_code'],
-        'item_code' => $this->_data[$contributionId]['item_code'],
-        'invoice_description' => $this->_data[$contributionId]['invoice_description'],
-        'line_notes' => $this->_data[$contributionId]['line_notes'],
-        'unit_price' => $this->_data[$contributionId]['unit_price'],
-      );
-      $result = CRM_Invoicestoexact_ExactHelper::sendInvoice($data);
-      if (!isset($result['is_error']) || !isset($result['order_number']) || !isset($result['error_message'])) {
-        CRM_Core_Error::debug_log_message(ts('Badly formed result array received from Exact in ') . __METHOD__
-          . ' (extension org.bemas.invoicestoexact)');
-      }
-      else {
-        $this->processResultFromExact($result, $contributionId, $countSucceed, $countFailed);
-      }
+      $task = new CRM_Queue_Task(['CRM_Invoicestoexact_ExactHelper', 'sendInvoice'], [$contributionId]);
+      $queue->createItem($task);
     }
-    if (!empty($countSucceed) || !empty($countFailed)) {
-      CRM_Core_Session::setStatus(ts('Invoices Sent to Exact'), ts($countSucceed . ' invoices sent to Exact, '
-        . $countFailed . ' failed'), 'info');
-    }
-    parent::postProcess();
-  }
 
-  /**
-   * Method to process result from Exact
-   * - if is_error = 1 -> set error flag and save error message in custom fields for contribution
-   * - if is_error = 0 -> unset error flag, clear error message and save exact invoice_id for contribution
-   *
-   * @param array $result
-   * @param int $contributionId
-   * @param int $countSucceed
-   * @param int $countFailed
-   */
-  private function processResultFromExact($result, $contributionId, &$countSucceed, &$countFailed) {
-    $sentErrorCustomFieldId = CRM_Invoicestoexact_Config::singleton()->getExactSentErrorCustomField('id');
-    $errorMessageCustomFieldId = CRM_Invoicestoexact_Config::singleton()->getExactErrorMessageCustomField('id');
-    $orderNumberCustomFieldId = CRM_Invoicestoexact_Config::singleton()->getExactOrderNumberCustomField('id');
-    $this->saveContributionCustomData($sentErrorCustomFieldId, $result['is_error'], $contributionId);
-    switch ($result['is_error']) {
-      case 0:
-        $countSucceed++;
-        $this->saveContributionCustomData($errorMessageCustomFieldId, "", $contributionId);
-        $this->saveContributionCustomData($orderNumberCustomFieldId, $result['order_number'], $contributionId);
-        // update membership status to current once succesfully sent
-        $this->updateMembershipToCurrent($contributionId);
-        break;
-
-      case 1:
-        $countFailed++;
-        $this->saveContributionCustomData($errorMessageCustomFieldId, $result['error_message'], $contributionId);
-        $this->saveContributionCustomData($orderNumberCustomFieldId, "", $contributionId);
-        break;
-    }
-  }
-
-  /**
-   * Method to update a membership to current
-   *
-   * @param $contributionId
-   */
-  private function updateMembershipToCurrent($contributionId) {
-    // first get membership id, will be false if not a membership
-    $membership = $this->getMembershipForContribution($contributionId);
-    if ($membership) {
-      try {
-        $membership['status_id'] = CRM_Invoicestoexact_Config::singleton()->getCurrentMembershipStatusId();
-        civicrm_api3('Membership', 'create', $membership);
-      }
-      catch (CiviCRM_API3_Exception $ex) {
-        CRM_Core_Error::debug_log_message(ts('Could not set membership with id ' . $membership['id']
-        . ' to current with API Membershio ceate in ' . __METHOD__ . '(extension org.bemas.invoicestoexact)'));
-      }
-    }
-  }
-
-  /**
-   * Method to get membership with contribution id
-   *
-   * @param $contributionId
-   * @return array|bool
-   */
-  private function getMembershipForContribution($contributionId) {
-    try {
-      $membershipId = civicrm_api3('MembershipPayment', 'getvalue', [
-        'contribution_id' => $contributionId,
-        'return' => 'membership_id'
+    if ($queue->numberOfItems() > 0) {
+      // run the queue
+      $runner = new CRM_Queue_Runner([
+        'title' => 'BEMAS Exact Sync',
+        'queue' => $queue,
+        'errorMode'=> CRM_Queue_Runner::ERROR_CONTINUE,
+        'onEndUrl' => CRM_Utils_System::url('civicrm/contribute/search', 'reset=1'),
       ]);
-      return civicrm_api3('Membership', 'getsingle', ['id' => $membershipId]);
+      $runner->runAllViaWeb();
     }
-    catch (CiviCRM_API3_Exception $ex) {
-      return FALSE;
+    else {
+      CRM_Core_Session::setStatus('Geen bijdragen te synchroniseren', 'Fout', 'error');
     }
 
+    parent::postProcess();
   }
 
   /**
