@@ -204,6 +204,7 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         , part_det.{$this->_partPOColumn} participant_po_number
         , c_det.{$this->_orderNumberColumn} order_number
         , e.title event_title
+        , p.id participant_id
         , p.fee_amount event_all_in_price
         , p.role_id
         , p.status_id
@@ -256,9 +257,13 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
           throw new Exception( 'Geen Exact klant ID ingevuld bij werkgever of deelname');
         }
 
+        // get the registrations linked to this one
+        $extraParticipantCount = $this->getLinkedParticipantCount($dao->participant_id);
+        $participantList = $this->getFormattedParticipantList($dao->participant_id, $dao->participant_name, $dao->employer_name);
+
         // get the event code and add the line items
         $eventExactCodes = $this->getExactEventAndCateringCodes($dao->event_title);
-        $this->addOrReplaceLineItems($contributionID, $eventExactCodes, $dao->event_all_in_price, $dao->event_food_price, $dao->event_beverage_price);
+        $this->addOrReplaceLineItems($contributionID, $eventExactCodes, $dao->event_all_in_price, $dao->event_food_price, $dao->event_beverage_price, $extraParticipantCount);
 
         // add the PO, exact id of the payer, and invoice description
         $f = CRM_Invoicestoexact_Config::singleton()->getContributionExactIDCustomField('id');
@@ -268,7 +273,7 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         $this->saveContributionCustomData($f, $dao->participant_po_number, $contributionID);
 
         $f = CRM_Invoicestoexact_Config::singleton()->getContributionCommentCustomfield('id');
-        $this->saveContributionCustomData($f, 'Participant: ' . $dao->participant_name . ' (' . $dao->employer_name . ')', $contributionID);
+        $this->saveContributionCustomData($f, $participantList, $contributionID);
 
         $f = CRM_Invoicestoexact_Config::singleton()->getContributionDescriptionCustomfield('id');
         $this->saveContributionCustomData($f, 'BEMAS - ' . $eventExactCodes['event_code'], $contributionID);
@@ -305,7 +310,76 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
     return $retval;
   }
 
-  private function addOrReplaceLineItems($contributionID, $eventExactCodes, $event_all_in_price, $event_food_price, $event_beverage_price) {
+  private function getLinkedParticipantCount($participant_id) {
+    // get the other participants linked to this registration with status registered or attended with a fee amount > 0
+    $sql = "
+      select
+        count(*)
+      from
+        civicrm_participant
+      where
+        fee_amount > 0
+      and 
+        status_id in (1, 2)
+      and
+        registered_by_id = $participant_id
+    ";
+
+    $count = CRM_Core_DAO::singleValueQuery($sql);
+
+    return $count;
+  }
+
+  private function getFormattedParticipantList($participant_id, $participant_name, $employer_name) {
+    // create array with key = employer, and value = array or participants
+    $empl = [];
+    $empl[$employer_name] = [$participant_name];
+
+    // get the name and employer of the participants linked to this registration
+    $sql = "
+      select
+        concat(c.first_name, ' ', c.last_name) participant_name
+        , c.organization_name employer_name
+      from
+        civicrm_participant p
+      inner join
+        civicrm_contact c on c.id = p.contact_id
+      where
+        p.status_id in (1, 2)
+      and
+        p.registered_by_id = $participant_id
+    ";
+    $dao = CRM_Core_DAO::executeQuery($sql);
+
+    // add the extra participants (if any) to the array
+    while ($dao->fetch()) {
+      if (array_key_exists($dao->employer_name, $empl)) {
+        // add item to existing array
+        $empl[$dao->employer_name][] = $dao->participant_name;
+      }
+      else {
+        // add new employer
+        $empl[$dao->employer_name] = [$dao->participant_name];
+      }
+    }
+
+    // format the participant list
+    // e.g. Participant(s): XYZ - Jef, Jos; ABC - Annick
+    $particiantList = '';
+    foreach ($empl as $k => $v) {
+      if ($particiantList != '') {
+        // add separator
+        $particiantList .= '; ';
+      }
+
+      $particiantList .= $k . ' - ' . implode(', ', $v);
+    }
+    $particiantList = 'Participant(s): ' . $particiantList;
+
+    return $particiantList;
+  }
+
+  private function addOrReplaceLineItems($contributionID, $eventExactCodes, $event_all_in_price, $event_food_price, $event_beverage_price, $extraParticipantcount) {
     $sql = "select * from civicrm_line_item where contribution_id = $contributionID order by id";
     $dao = CRM_Core_DAO::executeQuery($sql);
 
@@ -325,21 +399,25 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
       }
       elseif ($i == 2) {
         // the second line item is drinks
-        $sqlUpdate = "update civicrm_line_item set label = %2, qty = 1, unit_price = %3, line_total = %3 where id = %1";
+        $sqlUpdate = "update civicrm_line_item set label = %2, qty = %3, unit_price = %4, line_total = %5 where id = %1";
         $sqlUpdateParams = [
           1 => [$dao->id, 'Integer'],
           2 => [$eventExactCodes['catering_drinks'], 'String'],
-          3 => [$event_beverage_price, 'Money'],
+          3 => [1 + $extraParticipantcount, 'Integer'],
+          4 => [$event_beverage_price, 'Money'],
+          5 => [$event_beverage_price * (1 + $extraParticipantcount), 'Money'],
         ];
         CRM_Core_DAO::executeQuery($sqlUpdate, $sqlUpdateParams);
       }
       elseif ($i == 3) {
         // the third line item is food
-        $sqlUpdate = "update civicrm_line_item set label = %2, qty = 1, unit_price = %3, line_total = %3 where id = %1";
+        $sqlUpdate = "update civicrm_line_item set label = %2, qty = %3, unit_price = %4, line_total = %5 where id = %1";
         $sqlUpdateParams = [
           1 => [$dao->id, 'Integer'],
           2 => [$eventExactCodes['catering_food'], 'String'],
-          3 => [$event_food_price, 'Money'],
+          3 => [1 + $extraParticipantcount, 'Integer'],
+          4 => [$event_food_price, 'Money'],
+          5 => [$event_food_price * (1 + $extraParticipantcount), 'Money'],
         ];
         CRM_Core_DAO::executeQuery($sqlUpdate, $sqlUpdateParams);
       }
@@ -358,8 +436,8 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         'financial_type_id' => 4, // event fee
         'label' => $eventExactCodes['catering_drinks'],
         'unit_price' => $event_beverage_price,
-        'qty' => 1,
-        'line_total' => $event_beverage_price,
+        'qty' => 1 + $extraParticipantcount,
+        'line_total' => $event_beverage_price * (1 + $extraParticipantcount),
       ];
       civicrm_api3('LineItem', 'create', $params);
     }
@@ -372,8 +450,8 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         'financial_type_id' => 4, // event fee
         'label' => $eventExactCodes['catering_food'],
         'unit_price' => $event_food_price,
-        'qty' => 1,
-        'line_total' => $event_food_price,
+        'qty' => 1 + $extraParticipantcount,
+        'line_total' => $event_food_price  * (1 + $extraParticipantcount),
       ];
       civicrm_api3('LineItem', 'create', $params);
     }

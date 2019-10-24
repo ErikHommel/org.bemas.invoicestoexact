@@ -164,6 +164,14 @@ class CRM_Invoicestoexact_ExactHelper {
           2 => [$participant['id'], 'Integer'],
         ];
         CRM_Core_DAO::executeQuery($sql, $sqlParams);
+
+        // update the related participants
+        $sql = 'update civicrm_participant set status_id = %1 where registered_by_id = %2 and status_id in (1, 2)';
+        $sqlParams = [
+          1 => [CRM_Invoicestoexact_Config::singleton()->getInvoicedParticipantStatusId(), 'Integer'],
+          2 => [$participant['id'], 'Integer'],
+        ];
+        CRM_Core_DAO::executeQuery($sql, $sqlParams);
       }
       catch (CiviCRM_API3_Exception $ex) {
         CRM_Core_Error::debug_log_message(ts('Could not set participant with id ' . $participant['id']
