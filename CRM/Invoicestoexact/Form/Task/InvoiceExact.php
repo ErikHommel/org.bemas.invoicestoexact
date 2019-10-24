@@ -429,31 +429,35 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
     }
     if ($i == 1) {
       // add drinks
-      $params = [
-        'entity_id' => $contributionID,
-        'entity_table' => 'civicrm_participant',
-        'contribution_id' => $contributionID,
-        'financial_type_id' => 4, // event fee
-        'label' => $eventExactCodes['catering_drinks'],
-        'unit_price' => $event_beverage_price,
-        'qty' => 1 + $extraParticipantcount,
-        'line_total' => $event_beverage_price * (1 + $extraParticipantcount),
-      ];
-      civicrm_api3('LineItem', 'create', $params);
+      if ($event_beverage_price > 0) {
+        $params = [
+          'entity_id' => $contributionID,
+          'entity_table' => 'civicrm_participant',
+          'contribution_id' => $contributionID,
+          'financial_type_id' => 4, // event fee
+          'label' => $eventExactCodes['catering_drinks'],
+          'unit_price' => $event_beverage_price,
+          'qty' => 1 + $extraParticipantcount,
+          'line_total' => $event_beverage_price * (1 + $extraParticipantcount),
+        ];
+        civicrm_api3('LineItem', 'create', $params);
+      }
     }
     if ($i == 1 || $i == 2) {
       // add food
-      $params = [
-        'entity_id' => $contributionID,
-        'entity_table' => 'civicrm_participant',
-        'contribution_id' => $contributionID,
-        'financial_type_id' => 4, // event fee
-        'label' => $eventExactCodes['catering_food'],
-        'unit_price' => $event_food_price,
-        'qty' => 1 + $extraParticipantcount,
-        'line_total' => $event_food_price  * (1 + $extraParticipantcount),
-      ];
-      civicrm_api3('LineItem', 'create', $params);
+      if ($event_food_price > 0) {
+        $params = [
+          'entity_id' => $contributionID,
+          'entity_table' => 'civicrm_participant',
+          'contribution_id' => $contributionID,
+          'financial_type_id' => 4, // event fee
+          'label' => $eventExactCodes['catering_food'],
+          'unit_price' => $event_food_price,
+          'qty' => 1 + $extraParticipantcount,
+          'line_total' => $event_food_price * (1 + $extraParticipantcount),
+        ];
+        civicrm_api3('LineItem', 'create', $params);
+      }
     }
   }
 
