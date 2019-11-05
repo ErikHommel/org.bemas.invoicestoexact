@@ -99,7 +99,7 @@ class CRM_Invoicestoexact_ExactHelper {
 
         // add comment to the last line
         if ($line >= 0 && $daoContrib->comment) {
-          $salesInvoiceLines[$line]->Notes = $daoContrib->comment;
+          $salesInvoiceLines[0]->Notes = $daoContrib->comment;
         }
 
         // add the line(s) to the invoice
