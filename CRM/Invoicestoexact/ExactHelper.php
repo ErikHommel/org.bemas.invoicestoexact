@@ -83,6 +83,7 @@ class CRM_Invoicestoexact_ExactHelper {
             $salesInvoiceLine->Item = $item->ID;
             $salesInvoiceLine->Quantity = $daoContribLines->qty;
             $salesInvoiceLine->UnitPrice = $daoContribLines->unit_price;
+            $salesInvoiceLine->CostCenter = $daoContribLines->label; // cost center is the same as the article code
             $salesInvoiceLines[] = $salesInvoiceLine;
           }
         }

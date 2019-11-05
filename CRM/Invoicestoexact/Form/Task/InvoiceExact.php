@@ -389,11 +389,14 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
 
       if ($i == 1) {
         // the first line item is the event subscription
-        $sqlUpdate = "update civicrm_line_item set label = %2, qty = 1, unit_price = %3, line_total = %3 where id = %1";
+        $unitPrice = $event_all_in_price - $event_food_price - $event_beverage_price;
+        $sqlUpdate = "update civicrm_line_item set label = %2, qty = %3, unit_price = %4, line_total = %5 where id = %1";
         $sqlUpdateParams = [
           1 => [$dao->id, 'Integer'],
           2 => [$eventExactCodes['event_code'], 'String'],
-          3 => [$event_all_in_price - $event_food_price - $event_beverage_price, 'Money'],
+          3 => [1 + $extraParticipantcount, 'Integer'],
+          4 => [$unitPrice, 'Money'],
+          5 => [$unitPrice * (1 + $extraParticipantcount), 'Money'],
         ];
         CRM_Core_DAO::executeQuery($sqlUpdate, $sqlUpdateParams);
       }
