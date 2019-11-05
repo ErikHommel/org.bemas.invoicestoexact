@@ -26,6 +26,7 @@ class CRM_Invoicestoexact_Config {
   private $_eventDetailsCustomGroup = [];
   private $_eventBeverageCostCustomField = [];
   private $_eventFoodCostCustomField = [];
+  private $_eventNumDaysCustomField = [];
 
   private $_participantDetailsCustomGroup = [];
   private $_participantExactIDCustomField = [];
@@ -271,6 +272,7 @@ class CRM_Invoicestoexact_Config {
     // create custom fields if not exists yet
     $this->createEventFoodCostCustomField();
     $this->createEventBeverageCostCustomField();
+    $this->createEventNumDaysCustomField();
   }
 
   private function createParticipantDetailsCustomGroup() {
@@ -398,6 +400,42 @@ class CRM_Invoicestoexact_Config {
       }
       catch (CiviCRM_API3_Exception $ex) {
         CRM_Core_Error::createError(ts('Could not find or create custom field for beverage food cost in ')
+          . __METHOD__ . ' (extension org.bemas.invoicestoexact');
+      }
+    }
+  }
+
+  private function createEventNumDaysCustomField() {
+    $customFieldName = 'bemas_event_num_days';
+
+    try {
+      $this->_eventNumDaysCustomField = civicrm_api3('CustomField', 'getsingle', [
+        'name' => $customFieldName,
+        'column_name' => $customFieldName,
+        'custom_group_id' => $this->_eventDetailsCustomGroup['id'],
+      ]);
+    }
+    catch (CiviCRM_API3_Exception $ex) {
+      try {
+        $createdCustomField = civicrm_api3('CustomField', 'create', [
+          'custom_group_id' => $this->_eventDetailsCustomGroup['id'],
+          'name' => $customFieldName,
+          'column_name' => $customFieldName,
+          'label' => 'Aantal dagen',
+          'data_type' => 'Int',
+          'html_type' => 'Text',
+          'is_required' => '1',
+          'default_value' => '1',
+          'is_search_range' => '0',
+          'is_active' => 1,
+          'is_searchable' => 1,
+          'is_view' => 0,
+          'weight' => 9,
+        ]);
+        $this->_eventNumDaysCustomField = $createdCustomField['values'][$createdCustomField['id']];
+      }
+      catch (CiviCRM_API3_Exception $ex) {
+        CRM_Core_Error::createError(ts('Could not find or create custom field for num days in ')
           . __METHOD__ . ' (extension org.bemas.invoicestoexact');
       }
     }
@@ -901,6 +939,15 @@ class CRM_Invoicestoexact_Config {
     }
     else {
       return $this->_eventBeverageCostCustomField;
+    }
+  }
+
+  public function getEventNumDaysCustomField($key = 'id') {
+    if (!empty($key) && isset($this->_eventNumDaysCustomField[$key])) {
+      return $this->_eventNumDaysCustomField[$key];
+    }
+    else {
+      return $this->_eventNumDaysCustomField;
     }
   }
 
