@@ -460,7 +460,7 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         li.id line_item_id,
         ov.value item_code,
         d1.{$this->_orgExactIdColumn} contact_code, 
-        d2.{$this->_orderNumberColumn} exact_order_number,              
+        d2.{$this->_orderNumberColumn} exact_order_number              
       from
         civicrm_contribution c
       left outer join
