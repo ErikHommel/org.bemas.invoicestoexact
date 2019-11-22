@@ -474,7 +474,7 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
       left outer join
         civicrm_membership_type mt on mt.id = m.membership_type_id
       left outer join
-        civicrm_option_value ov ON mt.name_nl_NL = ov.label_nl_NL AND ov.option_group_id = {$this->_invoiceOptionGroupId}
+        civicrm_option_value ov ON mt.name = ov.label AND ov.option_group_id = {$this->_invoiceOptionGroupId}
       LEFT JOIN
         {$this->_orgDetTableName} d1 ON c.contact_id = d1.entity_id
       LEFT JOIN 
