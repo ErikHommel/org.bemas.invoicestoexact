@@ -456,9 +456,10 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
       select
         c.id contribution_id,
         c.contact_id,
+        year(c.receive_date) contribution_year,
         cont.display_name,
         li.id line_item_id,
-        ov.value item_code,
+        ov.value item_code,             
         d1.{$this->_orgExactIdColumn} contact_code, 
         d2.{$this->_orderNumberColumn} exact_order_number              
       from
@@ -498,7 +499,9 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         }
 
         // invoice description
-        $invoiceDescription = "Lidmaatschap/Cotisation/Membership BEMAS";
+        $invoiceDescription = 'Lidmaatschap/ Membership/ Cotisation BEMAS ' . $dao->contribution_year;
+        $f = CRM_Invoicestoexact_Config::singleton()->getContributionDescriptionCustomfield('id');
+        $this->saveContributionCustomData($f, $invoiceDescription, $contributionID);
 
         // update the line item code
         $params = [
