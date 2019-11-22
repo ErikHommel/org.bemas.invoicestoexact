@@ -1,47 +1,21 @@
 # org.bemas.invoicestoexact
 
-![Screenshot](/images/screenshot.png)
+Maakt facturen aan in Exact Online op basis van bijdragen in CiviCRM.
 
-(*FIXME: In one or two paragraphs, describe what the extension does and why one would download it. *)
+## Factureren van evenementen
 
-The extension is licensed under [AGPL-3.0](LICENSE.txt).
+(aan te vullen)
 
-## Requirements
+## Factureren van lidmaatschappen
 
-* PHP v5.4+
-* CiviCRM (*FIXME: Version number*)
+(aan te vullen)
 
-## Installation (Web UI)
+## Technische implementatie
 
-This extension has not yet been published for installation via the web UI.
+We gebruiken:
 
-## Installation (CLI, Zip)
+* een actie (task), enkel beschikbaar in de zoekresultaten van bijdragen
+* een pagina (page), ter bevestiging van de geselecteerde bijdragen, opgesplitst in bijdragen zonder fouten en bijdragen met fouten
+* een queue + klasse, die de synchronisatie met Exact Online verzorgt
 
-Sysadmins and developers may download the `.zip` file for this extension and
-install it with the command-line tool [cv](https://github.com/civicrm/cv).
-
-```bash
-cd <extension-dir>
-cv dl org.bemas.invoicestoexact@https://github.com/FIXME/org.bemas.invoicestoexact/archive/master.zip
-```
-
-## Installation (CLI, Git)
-
-Sysadmins and developers may clone the [Git](https://en.wikipedia.org/wiki/Git) repo for this extension and
-install it with the command-line tool [cv](https://github.com/civicrm/cv).
-
-```bash
-git clone https://github.com/FIXME/org.bemas.invoicestoexact.git
-cv en invoicestoexact
-```
-
-## Usage
-
-(* FIXME: Where would a new user navigate to get started? What changes would they see? *)
-
-## Known Issues
-
-(* FIXME *)
-=======
-CiviCRM extension specific for BEMAS sending invoices to Exact
->>>>>>> bf0a1a7cadca77f874853ef13147aac9536e12c4
+ 

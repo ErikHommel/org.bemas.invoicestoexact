@@ -12,7 +12,6 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
   private $_correctElements = [];
   private $_errorElements = [];
 
-  // TODO NIEUW: TE CHECKEN/HERNOEMEN!!!
   private $_orgExactIdColumn = '';
   private $_orderNumberColumn = '';
   private $_orgDetTableName = '';
@@ -117,29 +116,6 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
     ];
     $this->add('text', $contactElement);
     $this->add('text', $messageElement);
-  }
-
-  /**
-   * Method to check if the contribution can be sent to Exact (only if custom field exact_invoice_id is empty)
-   *  and only if we have exact codes
-   *
-   * @param $contributionId
-   * @return bool
-   */
-  private function canInvoiceBeSent($contributionId) {
-    if (!empty($this->_data[$contributionId]['exact_order_number'])) {
-      $this->_data[$contributionId]['error_message'] = 'Bijdrage heeft al een Exact ordernummer en de factuur is al verstuurd naar Exact.';
-      return FALSE;
-    }
-    if (empty($this->_data[$contributionId]['contact_code'])) {
-      $this->_data[$contributionId]['error_message'] = 'Contact heeft geen Exact contact code';
-      return FALSE;
-    }
-    if (empty($this->_data[$contributionId]['item_code'])) {
-      $this->_data[$contributionId]['error_message'] = 'Lidmaatschapstype heeft geen Exact contact code';
-      return FALSE;
-    }
-    return TRUE;
   }
 
   /**
@@ -473,7 +449,9 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
   }
 
   private function buildDataMembership($contributionID) {
-    // TODO: aanpassen aan nieuwe situatie
+    $retval = TRUE;
+
+    // get the contribution and the membership-related data
     $sql = "
       SELECT 
         a.id AS contribution_id, 
@@ -482,8 +460,8 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         c.entity_table, 
         c.label AS invoice_description, 
         c.unit_price, 
-        d.{this->_orgExactIdColumn}, 
-        e.$orderNumberColumn, 
+        d.{$this->_orgExactIdColumn} contact_code, 
+        e.{$this->_orderNumberColumn} exact_order_number, 
         f.value AS item_code 
       FROM 
         civicrm_contribution a 
@@ -492,20 +470,50 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
       LEFT JOIN 
         civicrm_line_item c ON a.id = c.contribution_id
       LEFT JOIN
-        $orgDetTableName d ON a.contact_id = d.entity_id
+        {$this->_orgDetTableName} d ON a.contact_id = d.entity_id
       LEFT JOIN 
-        $contDataTableName e ON a.id = e.entity_id
+        {$this->_contDataTableName} e ON a.id = e.entity_id
       LEFT JOIN 
-        civicrm_option_value f ON c.label = f.label AND f.option_group_id = $invoiceOptionGroupId
+        civicrm_option_value f ON c.label = f.label AND f.option_group_id = $this->_invoiceOptionGroupId
       WHERE 
         a.id = $contributionID
     ";
 
-    // invoice description
-    $invoiceDescription = "Lidmaatschap/Cotisation/Membership BEMAS";
+    try {
+      $dao = CRM_Core_DAO::executeQuery($sql);
+      if ($dao->fetch()) {
+        // validate the contribution
+        if (!empty($dao->exact_order_number)) {
+          throw new Exception('Bijdrage heeft al een Exact ordernummer en de factuur is al verstuurd naar Exact.');
+        }
+        if (empty($dao->contact_code)) {
+          throw new Exception('Contact heeft geen Exact contact code');
+        }
+        if (empty($dao->item_code)) {
+          throw new Exception('Lidmaatschapstype heeft geen Exact artikel code');
+        }
 
-    $dao = CRM_Core_DAO::executeQuery($sql);
-    if ($dao->fetch()) {
+        // invoice description
+        $invoiceDescription = "Lidmaatschap/Cotisation/Membership BEMAS";
+
+          $this->_data[$dao->contribution_id] = [
+            'contact_id' => $dao->contact_id,
+            'display_name' => $dao->display_name,
+            'entity_table' => $dao->entity_table,
+            'invoice_description' => $invoiceDescription,
+            'unit_price' => $dao->unit_price,
+            'contact_code' => $dao->{$this->_orgExactIdColumn},
+            'exact_order_number' => $dao->{$this->_orderNumberColumn},
+            'item_code' => $dao->item_code,
+            'line_notes' => $this->generateLineNotes($dao->contact_id),
+          ];
+      }
+      else {
+        throw new Exception('Bijdrage en aanverwante info niet gevonden');
+      }
+    }
+    catch (Exception $e) {
+      // set error message
       $this->_data[$dao->contribution_id] = [
         'contact_id' => $dao->contact_id,
         'display_name' => $dao->display_name,
@@ -513,11 +521,14 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         'invoice_description' => $invoiceDescription,
         'unit_price' => $dao->unit_price,
         'contact_code' => $dao->{$this->_orgExactIdColumn},
-        'exact_order_number' => $dao->$orderNumberColumn,
         'item_code' => $dao->item_code,
-        'line_notes' => $this->generateLineNotes($dao->contact_id),
+        'error_message' => $e->getMessage(),
       ];
+
+      $retval = FALSE;
     }
+
+    return $retval;
   }
 
   /**
@@ -549,7 +560,6 @@ Employee(s) currently designated as member contact(s) in our records:\n\n";
           case CRM_Invoicestoexact_Config::singleton()->getPrimaryMemberTypeValue():
             $primaryLines[] = $dao->display_name;
             break;
-
           case CRM_Invoicestoexact_Config::singleton()->getMemberTypeValue():
             $memberLines[] = $dao->display_name;
             break;
