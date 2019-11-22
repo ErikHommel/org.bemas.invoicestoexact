@@ -507,6 +507,10 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         ];
         civicrm_api3('LineItem', 'Create', $params);
 
+        // store the exact id of the payer
+        $f = CRM_Invoicestoexact_Config::singleton()->getContributionExactIDCustomField('id');
+        $this->saveContributionCustomData($f, $dao->contact_code, $contributionID);
+
         // update the members contacts of this organization
         $memberContacts = $this->generateLineNotes($dao->contact_id);
         $f = CRM_Invoicestoexact_Config::singleton()->getContributionCommentCustomfield('id');
