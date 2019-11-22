@@ -453,30 +453,34 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
 
     // get the contribution and the membership-related data
     $sql = "
-      SELECT 
-        a.id AS contribution_id, 
-        a.contact_id, 
-        b.display_name, 
-        c.entity_table, 
-        c.label AS invoice_description, 
-        c.unit_price, 
-        d.{$this->_orgExactIdColumn} contact_code, 
-        e.{$this->_orderNumberColumn} exact_order_number, 
-        f.value AS item_code 
-      FROM 
-        civicrm_contribution a 
-      INNER JOIN 
-        civicrm_contact b ON a.contact_id = b.id
-      LEFT JOIN 
-        civicrm_line_item c ON a.id = c.contribution_id
+      select
+        c.id contribution_id,
+        c.contact_id,
+        cont.display_name,
+        li.id line_item_id,
+        ov.value item_code,
+        d1.{$this->_orgExactIdColumn} contact_code, 
+        d2.{$this->_orderNumberColumn} exact_order_number,              
+      from
+        civicrm_contribution c
+      left outer join
+        civicrm_contact cont on cont.id = c.contact_id
+      left outer join
+        civicrm_line_item li on li.contribution_id = c.id
+      left outer join
+        civicrm_membership_payment p on p.contribution_id = c.id
+      left outer join
+        civicrm_membership m on m.id = p.membership_id
+      left outer join
+        civicrm_membership_type mt on mt.id = m.membership_type_id
+      left outer join
+        civicrm_option_value ov ON mt.name_nl_NL = ov.label_nl_NL AND ov.option_group_id = {$this->_invoiceOptionGroupId}
       LEFT JOIN
-        {$this->_orgDetTableName} d ON a.contact_id = d.entity_id
+        {$this->_orgDetTableName} d1 ON c.contact_id = d1.entity_id
       LEFT JOIN 
-        {$this->_contDataTableName} e ON a.id = e.entity_id
-      LEFT JOIN 
-        civicrm_option_value f ON c.label = f.label AND f.option_group_id = $this->_invoiceOptionGroupId
-      WHERE 
-        a.id = $contributionID
+        {$this->_contDataTableName} d2 ON c.id = d2.entity_id        
+      WHERE
+        c.id = $contributionID    
     ";
 
     try {
@@ -496,17 +500,28 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         // invoice description
         $invoiceDescription = "Lidmaatschap/Cotisation/Membership BEMAS";
 
-          $this->_data[$dao->contribution_id] = [
-            'contact_id' => $dao->contact_id,
-            'display_name' => $dao->display_name,
-            'entity_table' => $dao->entity_table,
-            'invoice_description' => $invoiceDescription,
-            'unit_price' => $dao->unit_price,
-            'contact_code' => $dao->{$this->_orgExactIdColumn},
-            'exact_order_number' => $dao->{$this->_orderNumberColumn},
-            'item_code' => $dao->item_code,
-            'line_notes' => $this->generateLineNotes($dao->contact_id),
-          ];
+        // update the line item code
+        $params = [
+          'id' => $dao->line_item_id,
+          'label' => $dao->item_code,
+        ];
+        civicrm_api3('LineItem', 'Create', $params);
+
+        // update the members contacts of this organization
+        $memberContacts = $this->generateLineNotes($dao->contact_id);
+        $f = CRM_Invoicestoexact_Config::singleton()->getContributionCommentCustomfield('id');
+        $this->saveContributionCustomData($f, $memberContacts, $contributionID);
+
+        $this->_data[$dao->contribution_id] = [
+          'contact_id' => $dao->contact_id,
+          'display_name' => $dao->display_name,
+          'entity_table' => $dao->entity_table,
+          'invoice_description' => $invoiceDescription,
+          'unit_price' => $dao->unit_price,
+          'contact_code' => $dao->{$this->_orgExactIdColumn},
+          'exact_order_number' => $dao->{$this->_orderNumberColumn},
+          'item_code' => $dao->item_code,
+        ];
       }
       else {
         throw new Exception('Bijdrage en aanverwante info niet gevonden');
