@@ -86,7 +86,12 @@ class CRM_Invoicestoexact_ExactHelper {
 
             // add cost center (= same as article code)
             if ($line == 0) {
-              $salesInvoiceLine->CostCenter = $daoContribLines->label;
+              if ($daoContrib->financial_type == 'Member Dues') {
+                $salesInvoiceLine->CostCenter = 'LIDM';
+              }
+              else {
+                $salesInvoiceLine->CostCenter = $daoContribLines->label;
+              }
             }
             else {
               // take the cost center of the first line
