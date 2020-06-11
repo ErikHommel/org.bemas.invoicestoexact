@@ -130,11 +130,11 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         SELECT
           c.id contribution_id
           , ft.name financial_type
-        FROM 
-          civicrm_contribution c 
-        INNER JOIN          
+        FROM
+          civicrm_contribution c
+        INNER JOIN
           civicrm_financial_type ft on c.financial_type_id = ft.id
-        WHERE 
+        WHERE
           c.id IN (" . implode(', ', $this->_contributionIds) . ')';
       $dao = CRM_Core_DAO::executeQuery($sql);
       while ($dao->fetch()) {
@@ -190,13 +190,13 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         , ifnull(e_det.{$this->_eventBeverageCostColumn}, 0) event_beverage_price
         , ifnull(e_det.{$this->_eventNumDaysColumn}, 1) event_num_days
       FROM
-        civicrm_contribution c 
+        civicrm_contribution c
       INNER JOIN
         civicrm_contact contact_a on contact_a.id = c.contact_id
       INNER JOIN
         civicrm_participant_payment pp on pp.contribution_id = c.id
       INNER JOIN
-        civicrm_participant p on p.id = pp.participant_id        
+        civicrm_participant p on p.id = pp.participant_id
       LEFT OUTER JOIN
         civicrm_contact empl on empl.id = contact_a.employer_id
       LEFT OUTER JOIN
@@ -206,11 +206,11 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
       LEFT OUTER JOIN
         civicrm_event e on e.id = p.event_id
       LEFT OUTER JOIN
-        {$this->_eventDetTableName} e_det ON e.id = e_det.entity_id        
+        {$this->_eventDetTableName} e_det ON e.id = e_det.entity_id
       LEFT OUTER JOIN
         {$this->_contDataTableName} c_det ON c.id = c_det.entity_id
       WHERE
-        c.id = $contributionID 
+        c.id = $contributionID
     ";
 
     try {
@@ -298,7 +298,7 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         civicrm_participant
       where
         fee_amount > 0
-      and 
+      and
         status_id in (1, 2)
       and
         registered_by_id = $participant_id
@@ -459,9 +459,9 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         year(c.receive_date) contribution_year,
         cont.display_name,
         li.id line_item_id,
-        ov.value item_code,             
-        d1.{$this->_orgExactIdColumn} contact_code, 
-        d2.{$this->_orderNumberColumn} exact_order_number              
+        ov.value item_code,
+        d1.{$this->_orgExactIdColumn} contact_code,
+        d2.{$this->_orderNumberColumn} exact_order_number
       from
         civicrm_contribution c
       left outer join
@@ -478,10 +478,10 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         civicrm_option_value ov ON mt.name = ov.label AND ov.option_group_id = {$this->_invoiceOptionGroupId}
       LEFT JOIN
         {$this->_orgDetTableName} d1 ON c.contact_id = d1.entity_id
-      LEFT JOIN 
-        {$this->_contDataTableName} d2 ON c.id = d2.entity_id        
+      LEFT JOIN
+        {$this->_contDataTableName} d2 ON c.id = d2.entity_id
       WHERE
-        c.id = $contributionID    
+        c.id = $contributionID
     ";
 
     try {
@@ -567,8 +567,8 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
 
     // add standard general conditions
     $lineNotes = "Het bedrijfslidmaatschap bij BEMAS wordt automatisch verlengd per kalenderjaar en is jaarlijks opzegbaar vóór 31/12. Alle werknemers kunnen aan ledentarief deelnemen aan de studiesessies en opleidingen. De hieronder vermelde lidcontacten ontvangen ook de magazines, het jaarboek en alle communicatie gericht naar onze leden. De lidcontacten kunnen ten allen tijde gewijzigd worden via e-mail naar office@bemas.org\n
-Sans avis de désaffiliation avant le 31/12, l’affiliation d'entreprise à la BEMAS est prolongée automatiquement par année calendrier. Tous les employé(e)s de l'entreprise peuvent assister aux activités et formations au tarif membre. Les contacts affiliés, mentionnés ci-dessous, reçoivent également les magazines, l’annuaire et toute communication destinée à nos membres. Les contacts affiliés peuvent être modifiés à tout moment par courrier électronique à office@bemas.org.\n 
-The corporate membership of BEMAS is renewed automatically for one calendar year and can be terminated annually before Dec 31st. All employees can participate at the member activities and trainings at a special member rate. The member contacts listed below also receive the magazine(s), the yearbook and all communications addressed to our members. The member contacts can be changed at all times by sending an email to office@bemas.org.\n 
+Sans avis de désaffiliation avant le 31/12, l’affiliation d'entreprise à la BEMAS est prolongée automatiquement par année calendrier. Tous les employé(e)s de l'entreprise peuvent assister aux activités et formations au tarif membre. Les contacts affiliés, mentionnés ci-dessous, reçoivent également les magazines, l’annuaire et toute communication destinée à nos membres. Les contacts affiliés peuvent être modifiés à tout moment par courrier électronique à office@bemas.org.\n
+The corporate membership of BEMAS is renewed automatically for one calendar year and can be terminated annually before Dec 31st. All employees can participate at the member activities and trainings at a special member rate. The member contacts listed below also receive the magazine(s), the yearbook and all communications addressed to our members. The member contacts can be changed at all times by sending an email to office@bemas.org.\n
 Werknemer(s) die momenteel als lidcontact is (zijn) genoteerd:\n
 Employé(s) actuellement noté(s) en tant que contact(s) affilié(s):\n
 Employee(s) currently designated as member contact(s) in our records:\n\n";
@@ -612,7 +612,7 @@ Employee(s) currently designated as member contact(s) in our records:\n\n";
       FROM civicrm_relationship AS rel
       JOIN civicrm_contact AS emp ON rel.contact_id_a = emp.id
       LEFT JOIN ' . $indDetailsTable . ' ind ON emp.id = ind.entity_id
-      WHERE rel.relationship_type_id = %1 AND rel.contact_id_b = %2 AND ' . $typeOfMemberContactColumn . ' IN (%3, %4)
+      WHERE rel.relationship_type_id = %1 AND rel.contact_id_b = %2 AND ' . $typeOfMemberContactColumn . ' IN (%3, %4) and rel.is_active = 1
       ORDER BY emp.display_name';
     $result['queryParams'] = [
       1 => [CRM_Invoicestoexact_Config::singleton()->getEmployerRelationshipTypeId(), 'Integer'],
