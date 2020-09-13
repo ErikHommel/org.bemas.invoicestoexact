@@ -693,7 +693,7 @@ Employee(s) currently designated as member contact(s) in our records:\n\n";
     // make sure the code starts with TT, TC, T, A
     $firstTwoLetters = substr($eventCode[0],0, 2);
     $firstLetter = substr($eventCode[0],0, 1);
-    if ($firstTwoLetters == 'TC' || $firstTwoLetters == 'TT') {
+    if ($firstTwoLetters == 'TC' || $firstTwoLetters == 'TT' || $firstTwoLetters == 'OT') {
       $returnArr['catering_food'] = 'CatFood-' . $firstTwoLetters;
       $returnArr['catering_drinks'] = 'CatDrinks-' . $firstTwoLetters;
     }
@@ -703,7 +703,7 @@ Employee(s) currently designated as member contact(s) in our records:\n\n";
     }
     else {
       // not valid
-      throw new Exception( 'De event code begint niet met TC, TT, T of A: ' . $eventCode[0]);
+      throw new Exception( 'De event code begint niet met TC, TT, OT, T of A: ' . $eventCode[0]);
     }
 
     return $returnArr;
