@@ -170,6 +170,7 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
     $retval = TRUE;
 
     // get the contribution and the participant-related data
+    // 2022-11-16: the order by pid desc is an ugly hack because sometimes the join returns 2 records!
     $sql = "
       SELECT
         c.id contribution_id
@@ -211,6 +212,8 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         {$this->_contDataTableName} c_det ON c.id = c_det.entity_id
       WHERE
         c.id = $contributionID
+      ORDER BY
+        p.id DESC
     ";
 
     try {
