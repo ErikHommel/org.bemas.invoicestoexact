@@ -622,6 +622,8 @@ Employee(s) currently designated as member contact(s) in our records:\n\n";
         rel.contact_id_b = %3
       and
         rel.is_active = 1
+      and
+        ifnull(rel.end_date, '2099-12-31') > NOW()
       ORDER BY
         emp.display_name";
     $result['queryParams'] = [
