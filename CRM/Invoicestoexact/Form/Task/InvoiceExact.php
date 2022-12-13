@@ -589,10 +589,10 @@ Employee(s) currently designated as member contact(s) in our records:\n\n";
         }
       }
       if (!empty($primaryLines)) {
-        $lineNotes .= implode(", ", $primaryLines) . "\n";
+        $lineNotes .= implode(",\n", $primaryLines) . "\n";
       }
       if (!empty($memberLines)) {
-        $lineNotes .= implode(", ", $memberLines);
+        $lineNotes .= implode(",\n", $memberLines);
       }
     }
     return $lineNotes;
