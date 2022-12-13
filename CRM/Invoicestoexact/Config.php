@@ -43,6 +43,8 @@ class CRM_Invoicestoexact_Config {
   private $_invoiceParticipantStatusId = NULL;
   private $_typesOfMemberContactCustomField = [];
   private $_employerRelationshipTypeId = NULL;
+  private $_primaryMemberContactRelationshipTypeId = NULL;
+  private $_memberContactRelationshipTypeId = NULL;
   private $_primaryMemberTypeValue = NULL;
   private $_memberTypeValue = NULL;
 
@@ -95,6 +97,26 @@ class CRM_Invoicestoexact_Config {
     }
     catch (CiviCRM_API3_Exception $ex) {
       CRM_Core_Error::createError(ts('Couldn not find employee/employer relationship in ') . __METHOD__ . ' (extension org.bemas.invoicestoexact)');
+    }
+    try {
+      $this->_primaryMemberContactRelationshipTypeId = civicrm_api3('RelationshipType', 'getvalue', [
+        'name_a_b' => 'primary_member_contact_of',
+        'name_b_a' => 'primary_member_contact_is',
+        'return' => 'id',
+      ]);
+    }
+    catch (CiviCRM_API3_Exception $ex) {
+      CRM_Core_Error::createError(ts('Couldn not find primary_member_contact_of relationship in ') . __METHOD__ . ' (extension org.bemas.invoicestoexact)');
+    }
+    try {
+      $this->_memberContactRelationshipTypeId = civicrm_api3('RelationshipType', 'getvalue', [
+        'name_a_b' => 'member_contact_of',
+        'name_b_a' => 'member_contact_is',
+        'return' => 'id',
+      ]);
+    }
+    catch (CiviCRM_API3_Exception $ex) {
+      CRM_Core_Error::createError(ts('Couldn not find member_contact_of relationship in ') . __METHOD__ . ' (extension org.bemas.invoicestoexact)');
     }
   }
 
@@ -154,6 +176,14 @@ class CRM_Invoicestoexact_Config {
    */
   public function getEmployerRelationshipTypeId() {
     return $this->_employerRelationshipTypeId;
+  }
+
+  public function getPrimaryMemberContactRelationshipTypeId() {
+    return $this->_primaryMemberContactRelationshipTypeId;
+  }
+
+  public function getMemberContactRelationshipTypeId() {
+    return $this->_memberContactRelationshipTypeId;
   }
 
   /**

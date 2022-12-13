@@ -565,8 +565,6 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
   private function generateLineNotes($contactId) {
     $primaryLines = [];
     $memberLines = [];
-    $lineNotes = '';
-    $typeOfMemberContactColumn = CRM_Invoicestoexact_Config::singleton()->getTypesOfMemberContactCustomField('column_name');
 
     // add standard general conditions
     $lineNotes = "Het bedrijfslidmaatschap bij BEMAS wordt automatisch verlengd per kalenderjaar en is jaarlijks opzegbaar vóór 31/12. Alle werknemers kunnen aan ledentarief deelnemen aan de studiesessies en opleidingen. De hieronder vermelde lidcontacten ontvangen ook de magazines, het jaarboek en alle communicatie gericht naar onze leden. De lidcontacten kunnen ten allen tijde gewijzigd worden via e-mail naar office@bemas.org\n
@@ -581,11 +579,11 @@ Employee(s) currently designated as member contact(s) in our records:\n\n";
     if (isset($sqlArray['query']) && !empty($sqlArray['query']) && isset($sqlArray['queryParams'])) {
       $dao = CRM_Core_DAO::executeQuery($sqlArray['query'], $sqlArray['queryParams']);
       while ($dao->fetch()) {
-        switch ($dao->$typeOfMemberContactColumn) {
-          case CRM_Invoicestoexact_Config::singleton()->getPrimaryMemberTypeValue():
+        switch ($dao->relationship_type_id) {
+          case CRM_Invoicestoexact_Config::singleton()->getPrimaryMemberContactRelationshipTypeId():
             $primaryLines[] = $dao->display_name;
             break;
-          case CRM_Invoicestoexact_Config::singleton()->getMemberTypeValue():
+          case CRM_Invoicestoexact_Config::singleton()->getMemberContactRelationshipTypeId():
             $memberLines[] = $dao->display_name;
             break;
         }
@@ -609,19 +607,27 @@ Employee(s) currently designated as member contact(s) in our records:\n\n";
    */
   private function getMemberContactsQuery($contactId) {
     $typeOfMemberContactColumn = CRM_Invoicestoexact_Config::singleton()->getTypesOfMemberContactCustomField('column_name');
-    $indDetailsTable = CRM_Invoicestoexact_Config::singleton()->getIndividualDetailsCustomGroup('table_name');
+
     $result = [];
-    $result['query'] = 'SELECT emp.display_name, ind.' . $typeOfMemberContactColumn . '
-      FROM civicrm_relationship AS rel
-      JOIN civicrm_contact AS emp ON rel.contact_id_a = emp.id
-      LEFT JOIN ' . $indDetailsTable . ' ind ON emp.id = ind.entity_id
-      WHERE rel.relationship_type_id = %1 AND rel.contact_id_b = %2 AND ' . $typeOfMemberContactColumn . ' IN (%3, %4) and rel.is_active = 1
-      ORDER BY emp.display_name';
+    $result['query'] = "
+      SELECT
+        emp.display_name, rel.relationship_type_id
+      FROM
+        civicrm_relationship AS rel
+      INNER JOIN
+        civicrm_contact AS emp ON rel.contact_id_a = emp.id
+      WHERE
+        rel.relationship_type_id in (%1, %2)
+      AND
+        rel.contact_id_b = %3
+      and
+        rel.is_active = 1
+      ORDER BY
+        emp.display_name";
     $result['queryParams'] = [
-      1 => [CRM_Invoicestoexact_Config::singleton()->getEmployerRelationshipTypeId(), 'Integer'],
-      2 => [$contactId, 'Integer'],
-      3 => [CRM_Invoicestoexact_Config::singleton()->getPrimaryMemberTypeValue(), 'String'],
-      4 => [CRM_Invoicestoexact_Config::singleton()->getMemberTypeValue(), 'String'],
+      1 => [CRM_Invoicestoexact_Config::singleton()->getPrimaryMemberContactRelationshipTypeId(), 'Integer'],
+      2 => [CRM_Invoicestoexact_Config::singleton()->getMemberContactRelationshipTypeId(), 'Integer'],
+      3 => [$contactId, 'Integer'],
     ];
     return $result;
   }
