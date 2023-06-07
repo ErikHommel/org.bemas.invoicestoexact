@@ -245,7 +245,7 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
 
         // get the event code and add the line items
         $eventExactCodes = $this->getExactEventAndCateringCodes($dao->event_title);
-        $this->addOrReplaceLineItems($contributionID, $eventExactCodes, $dao->event_all_in_price, $dao->event_food_price, $dao->event_beverage_price, $dao->event_num_days, $extraParticipantCount);
+        $this->addOrReplaceLineItems($contributionID, $dao->participant_id, $eventExactCodes, $dao->event_all_in_price, $dao->event_food_price, $dao->event_beverage_price, $dao->event_num_days, $extraParticipantCount);
 
         // add the PO, exact id of the payer, and invoice description
         $f = CRM_Invoicestoexact_Config::singleton()->getContributionExactIDCustomField('id');
@@ -361,7 +361,7 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
     return $particiantList;
   }
 
-  private function addOrReplaceLineItems($contributionID, $eventExactCodes, $event_all_in_price, $event_food_price, $event_beverage_price, $event_num_days, $extraParticipantcount) {
+  private function addOrReplaceLineItems($contributionID, $participantId, $eventExactCodes, $event_all_in_price, $event_food_price, $event_beverage_price, $event_num_days, $extraParticipantcount) {
     $sql = "select * from civicrm_line_item where contribution_id = $contributionID order by id";
     $dao = CRM_Core_DAO::executeQuery($sql);
 
@@ -421,7 +421,7 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
       // add drinks
       if ($event_beverage_price > 0) {
         $params = [
-          'entity_id' => $contributionID,
+          'entity_id' => $participantId,
           'entity_table' => 'civicrm_participant',
           'contribution_id' => $contributionID,
           'financial_type_id' => 4, // event fee
@@ -437,7 +437,7 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
       // add food
       if ($event_food_price > 0) {
         $params = [
-          'entity_id' => $contributionID,
+          'entity_id' => $participantId,
           'entity_table' => 'civicrm_participant',
           'contribution_id' => $contributionID,
           'financial_type_id' => 4, // event fee
