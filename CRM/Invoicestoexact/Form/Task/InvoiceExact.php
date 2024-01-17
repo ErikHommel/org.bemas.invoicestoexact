@@ -674,12 +674,10 @@ Employee(s) currently designated as member contact(s) in our records:\n\n";
     $firstTwoLetters = substr($eventCode[0],0, 2);
     $firstLetter = substr($eventCode[0],0, 1);
     if ($firstTwoLetters == 'TC' || $firstTwoLetters == 'TT' || $firstTwoLetters == 'OT') {
-      $returnArr['catering_food'] = 'CatFood-' . $firstTwoLetters;
-      $returnArr['catering_drinks'] = 'CatDrinks-' . $firstTwoLetters;
+      $returnArr['catering_food'] = 'CAT-' . $firstTwoLetters;
     }
     elseif ($firstLetter == 'T' || $firstLetter == 'A' || $firstLetter == 'E') {
-      $returnArr['catering_food'] = 'CatFood-' . $firstLetter;
-      $returnArr['catering_drinks'] = 'CatDrinks-' . $firstLetter;
+      $returnArr['catering_food'] = 'CAT-' . $firstLetter;
     }
     else {
       // not valid
