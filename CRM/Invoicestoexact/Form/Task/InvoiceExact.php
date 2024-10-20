@@ -262,7 +262,7 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
           'display_name' => $dao->participant_name . ' (' . $dao->employer_name . ')',
           'entity_table' => 'civicrm_participant',
           'invoice_description' => $dao->participant_po_number,
-          'unit_price' => $dao->event_all_in_price . ', waarvan € ' . $dao->event_food_price . ' catering',
+          'unit_price' => $dao->event_all_in_price, // . ', waarvan € ' . $dao->event_food_price . ' catering',
           'contact_code' => $dao->participant_exact_id ? $dao->participant_exact_id : $dao->employer_exact_id,
           'item_code' => $eventExactCodes['event_code'],
         ];
@@ -277,7 +277,7 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         'display_name' => $dao->participant_name . ' (' . $dao->employer_name . ')',
         'entity_table' => 'civicrm_participant',
         'invoice_description' => $dao->participant_po_number,
-        'unit_price' => $dao->event_all_in_price . ', waarvan € ' . $dao->event_food_price . ' catering',
+        'unit_price' => $dao->event_all_in_price, // . ', waarvan € ' . $dao->event_food_price . ' catering',
         'contact_code' => $dao->participant_exact_id ? $dao->participant_exact_id : $dao->employer_exact_id,
         'item_code' => $eventExactCodes['event_code'],
         'error_message' => $e->getMessage(),
