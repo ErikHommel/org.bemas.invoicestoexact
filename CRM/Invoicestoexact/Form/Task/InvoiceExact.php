@@ -249,7 +249,9 @@ class CRM_Invoicestoexact_Form_Task_InvoiceExact extends CRM_Contribute_Form_Tas
         $this->saveContributionCustomData($f,$dao->participant_exact_id ? $dao->participant_exact_id : $dao->employer_exact_id, $contributionID);
 
         $f = CRM_Invoicestoexact_Config::singleton()->getContributionPOCustomfield('id');
-        $this->saveContributionCustomData($f, $dao->participant_po_number, $contributionID);
+        if ($dao->participant_po_number) {
+          $this->saveContributionCustomData($f, $dao->participant_po_number, $contributionID);
+        }
 
         $f = CRM_Invoicestoexact_Config::singleton()->getContributionCommentCustomfield('id');
         $this->saveContributionCustomData($f, $participantList, $contributionID);
