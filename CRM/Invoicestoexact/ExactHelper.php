@@ -36,8 +36,8 @@ class CRM_Invoicestoexact_ExactHelper {
           civicrm_contribution c
         INNER JOIN
           $contribDetails cd on cd.entity_id = c.id
-        INNER JOIN          
-          civicrm_financial_type ft on c.financial_type_id = ft.id        
+        INNER JOIN
+          civicrm_financial_type ft on c.financial_type_id = ft.id
         WHERE
           c.id = $contributionID
       ";
@@ -87,7 +87,7 @@ class CRM_Invoicestoexact_ExactHelper {
             // add cost center (= same as article code)
             if ($line == 0) {
               if ($daoContrib->financial_type == 'Member Dues') {
-                $salesInvoiceLine->CostCenter = 'LIDM';
+                $salesInvoiceLine->CostCenter = 'LIDM' . date('y');
               }
               else {
                 $salesInvoiceLine->CostCenter = $daoContribLines->label;
